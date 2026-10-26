@@ -3,6 +3,7 @@ package mqtt
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
