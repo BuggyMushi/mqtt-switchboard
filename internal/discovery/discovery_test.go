@@ -122,3 +122,46 @@ func TestRegistry_HAAbbreviationsAndGrouping(t *testing.T) {
 		t.Fatalf("expected state ON, got %s", dev.State)
 	}
 }
+
+func TestRegistry_MultiEntitySharedStateTopic(t *testing.T) {
+	reg := NewRegistry(nil, nil)
+	prefix := "homeassistant"
+
+	// Entity 1: Fan
+	fanPayload := []byte(`{
+		"name": "Fan",
+		"uniq_id": "eggroller_fan",
+		"stat_t": "Chickenhouse/Eggroller/status",
+		"val_tpl": "{{ value_json.fan }}",
+		"dev": {"ids": ["eggroller_dev"], "name": "Eggroller"}
+	}`)
+	reg.HandleDiscoveryMessage(prefix, "homeassistant/binary_sensor/eggroller_fan/config", fanPayload)
+
+	// Entity 2: Temp
+	tempPayload := []byte(`{
+		"name": "Temperature",
+		"uniq_id": "eggroller_temp",
+		"stat_t": "Chickenhouse/Eggroller/status",
+		"val_tpl": "{{ value_json.temp }}",
+		"dev": {"ids": ["eggroller_dev"], "name": "Eggroller"}
+	}`)
+	reg.HandleDiscoveryMessage(prefix, "homeassistant/sensor/eggroller_temp/config", tempPayload)
+
+	if reg.Count() != 2 {
+		t.Fatalf("expected 2 entities, got %d", reg.Count())
+	}
+
+	// Update with shared JSON payload
+	statusPayload := `{"fan": "ON", "temp": 38.5, "heater": "OFF"}`
+	reg.UpdateStateByTopic("Chickenhouse/Eggroller/status", statusPayload)
+
+	fan, ok := reg.GetByID("eggroller_fan")
+	if !ok || fan.State != "ON" {
+		t.Fatalf("expected fan state ON, got %s", fan.State)
+	}
+
+	temp, ok := reg.GetByID("eggroller_temp")
+	if !ok || temp.State != "38.5" {
+		t.Fatalf("expected temp state 38.5, got %s", temp.State)
+	}
+}

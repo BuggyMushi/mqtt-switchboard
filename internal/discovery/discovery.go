@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,8 @@ type DeviceEntity struct {
 	Component         string    `json:"component"` // switch, button, sensor, binary_sensor, light, cover
 	CommandTopic      string    `json:"cmd_topic,omitempty"`
 	StateTopic        string    `json:"state_topic,omitempty"`
+	ValueTemplate     string    `json:"val_tpl,omitempty"`
+	JSONKey           string    `json:"json_key,omitempty"` // Extracted JSON key e.g. "fan", "temp"
 	PayloadOn         string    `json:"payload_on,omitempty"`
 	PayloadOff        string    `json:"payload_off,omitempty"`
 	PayloadPress      string    `json:"payload_press,omitempty"`
@@ -32,7 +35,7 @@ type DeviceEntity struct {
 type Registry struct {
 	mu           sync.RWMutex
 	devices      map[string]*DeviceEntity
-	topicToID    map[string]string // state_topic -> device ID mapping
+	topicToIDs   map[string][]string // state_topic -> list of device IDs (supports multi-channel sharing)
 	onNewTopic   func(stateTopic string)
 	onStateEvent func(entity *DeviceEntity)
 }
@@ -41,7 +44,7 @@ type Registry struct {
 func NewRegistry(onNewTopic func(stateTopic string), onStateEvent func(entity *DeviceEntity)) *Registry {
 	return &Registry{
 		devices:      make(map[string]*DeviceEntity),
-		topicToID:    make(map[string]string),
+		topicToIDs:   make(map[string][]string),
 		onNewTopic:   onNewTopic,
 		onStateEvent: onStateEvent,
 	}
@@ -73,6 +76,16 @@ func getString(m map[string]interface{}, keys ...string) string {
 					return s
 				}
 			}
+		}
+func extractJSONKey(tpl string) string {
+	tpl = strings.TrimSpace(tpl)
+	if strings.Contains(tpl, "value_json.") {
+		parts := strings.Split(tpl, "value_json.")
+		if len(parts) > 1 {
+			k := parts[1]
+			k = strings.TrimRight(k, " }|")
+			k = strings.TrimSpace(k)
+			return k
 		}
 	}
 	return ""
@@ -115,7 +128,7 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	stateTopic := getString(raw, "stat_t", "state_topic")
 	commandTopic := getString(raw, "cmd_t", "command_topic")
 
-	// 4. Payloads
+	// 4. Payloads & Value Templates
 	payloadOn := getString(raw, "pl_on", "payload_on")
 	if payloadOn == "" {
 		payloadOn = "ON"
@@ -129,6 +142,8 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 		payloadPress = "PRESS"
 	}
 	unit := getString(raw, "unit_of_meas", "unit_of_measurement")
+	valTpl := getString(raw, "val_tpl", "value_template")
+	jsonKey := extractJSONKey(valTpl)
 
 	// 5. Parent Device Grouping Information (supporting 'dev' and 'device')
 	deviceID := ""
@@ -185,8 +200,6 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	}
 
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	entity, exists := r.devices[id]
 	if !exists {
 		entity = &DeviceEntity{
@@ -202,6 +215,8 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	entity.Component = component
 	entity.CommandTopic = commandTopic
 	entity.StateTopic = stateTopic
+	entity.ValueTemplate = valTpl
+	entity.JSONKey = jsonKey
 	entity.PayloadOn = payloadOn
 	entity.PayloadOff = payloadOff
 	entity.PayloadPress = payloadPress
@@ -212,23 +227,39 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	entity.Manufacturer = deviceManufacturer
 	entity.Firmware = deviceFirmware
 
+	isNewTopic := false
 	if stateTopic != "" {
-		r.topicToID[stateTopic] = id
-		if r.onNewTopic != nil {
-			r.onNewTopic(stateTopic)
+		ids := r.topicToIDs[stateTopic]
+		found := false
+		for _, existingID := range ids {
+			if existingID == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if len(ids) == 0 {
+				isNewTopic = true
+			}
+			r.topicToIDs[stateTopic] = append(ids, id)
 		}
 	}
 
+	entityCopy := *entity
+	r.mu.Unlock()
+
+	// Execute callbacks outside lock to prevent deadlocks
+	if isNewTopic && r.onNewTopic != nil {
+		r.onNewTopic(stateTopic)
+	}
+
 	if r.onStateEvent != nil {
-		r.onStateEvent(entity)
+		r.onStateEvent(&entityCopy)
 	}
 }
 
 // RegisterStatic adds manually configured devices from config.json
 func (r *Registry) RegisterStatic(id, name, component, cmdTopic, stateTopic, pOn, pOff, pPress string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if pOn == "" {
 		pOn = "ON"
 	}
@@ -255,12 +286,20 @@ func (r *Registry) RegisterStatic(id, name, component, cmdTopic, stateTopic, pOn
 		LastUpdated:  time.Now(),
 	}
 
+	r.mu.Lock()
 	r.devices[id] = entity
+	isNewTopic := false
 	if stateTopic != "" {
-		r.topicToID[stateTopic] = id
-		if r.onNewTopic != nil {
-			r.onNewTopic(stateTopic)
+		ids := r.topicToIDs[stateTopic]
+		if len(ids) == 0 {
+			isNewTopic = true
 		}
+		r.topicToIDs[stateTopic] = append(ids, id)
+	}
+	r.mu.Unlock()
+
+	if isNewTopic && r.onNewTopic != nil {
+		r.onNewTopic(stateTopic)
 	}
 }
 
@@ -271,50 +310,80 @@ func (r *Registry) Unregister(id string) {
 
 	if ent, exists := r.devices[id]; exists {
 		if ent.StateTopic != "" {
-			delete(r.topicToID, ent.StateTopic)
+			ids := r.topicToIDs[ent.StateTopic]
+			newIDs := make([]string, 0, len(ids))
+			for _, itemID := range ids {
+				if itemID != id {
+					newIDs = append(newIDs, itemID)
+				}
+			}
+			if len(newIDs) == 0 {
+				delete(r.topicToIDs, ent.StateTopic)
+			} else {
+				r.topicToIDs[ent.StateTopic] = newIDs
+			}
 		}
 		delete(r.devices, id)
 	}
 }
 
-// UpdateStateByTopic updates device state when a state topic payload arrives
-func (r *Registry) UpdateStateByTopic(topic, payload string) *DeviceEntity {
+// UpdateStateByTopic updates device states when a state topic payload arrives
+func (r *Registry) UpdateStateByTopic(topic, payload string) []*DeviceEntity {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	id, exists := r.topicToID[topic]
-	if !exists {
-		return nil
-	}
-
-	entity, found := r.devices[id]
-	if !found {
+	ids, exists := r.topicToIDs[topic]
+	if !exists || len(ids) == 0 {
+		r.mu.Unlock()
 		return nil
 	}
 
 	trimmed := strings.TrimSpace(payload)
-	// If payload is JSON (e.g. {"state":"ON"} or {"rssi":-60}), attempt clean value extraction
+	var jsonDoc map[string]interface{}
+	isJSON := false
 	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
-		var jsonDoc map[string]interface{}
 		if err := json.Unmarshal([]byte(trimmed), &jsonDoc); err == nil {
-			if s, ok := jsonDoc["state"].(string); ok {
-				trimmed = s
-			} else if s, ok := jsonDoc["status"].(string); ok {
-				trimmed = s
-			} else if s, ok := jsonDoc["value"].(string); ok {
-				trimmed = s
-			}
+			isJSON = true
 		}
 	}
 
-	entity.State = trimmed
-	entity.LastUpdated = time.Now()
+	var updated []*DeviceEntity
+	for _, id := range ids {
+		entity, found := r.devices[id]
+		if !found {
+			continue
+		}
 
+		targetVal := trimmed
+		if isJSON {
+			if entity.JSONKey != "" {
+				if val, ok := jsonDoc[entity.JSONKey]; ok && val != nil {
+					targetVal = fmt.Sprintf("%v", val)
+				}
+			} else {
+				if s, ok := jsonDoc["state"].(string); ok {
+					targetVal = s
+				} else if s, ok := jsonDoc["status"].(string); ok {
+					targetVal = s
+				} else if s, ok := jsonDoc["value"].(string); ok {
+					targetVal = s
+				}
+			}
+		}
+
+		entity.State = targetVal
+		entity.LastUpdated = time.Now()
+		cpy := *entity
+		updated = append(updated, &cpy)
+	}
+	r.mu.Unlock()
+
+	// Broadcast events outside mutex
 	if r.onStateEvent != nil {
-		r.onStateEvent(entity)
+		for _, ent := range updated {
+			r.onStateEvent(ent)
+		}
 	}
 
-	return entity
+	return updated
 }
 
 // GetAll returns slice of all registered entities

@@ -140,35 +140,45 @@ func (c *Client) subscribeDiscovery() {
 	token := c.client.Subscribe(pattern, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
 		topic := msg.Topic()
 		if strings.HasSuffix(topic, "/config") {
-			c.logger.Info("[MQTT:Discovery] Received config on %s (bytes: %d)", topic, len(msg.Payload()))
-			c.registry.HandleDiscoveryMessage(prefix, topic, msg.Payload())
+			payload := make([]byte, len(msg.Payload()))
+			copy(payload, msg.Payload())
+			c.logger.Info("[MQTT:Discovery] Received config on %s (bytes: %d)", topic, len(payload))
+			go c.registry.HandleDiscoveryMessage(prefix, topic, payload)
 		}
 	})
 	token.Wait()
 	c.logger.Info("Subscribed to HA Discovery wildcard: %s", pattern)
 }
 
-// SubscribeStateTopic dynamically subscribes to a device state topic
+// SubscribeStateTopic dynamically subscribes to a device state topic in background
 func (c *Client) SubscribeStateTopic(topic string) {
 	if topic == "" || c.client == nil || !c.client.IsConnected() {
 		return
 	}
 
 	c.subscribedMu.Lock()
-	defer c.subscribedMu.Unlock()
-
 	if c.subscribed[topic] {
+		c.subscribedMu.Unlock()
 		return
 	}
+	c.subscribed[topic] = true
+	c.subscribedMu.Unlock()
 
-	c.logger.Info("[MQTT] Subscribing to state topic: %s", topic)
-	token := c.client.Subscribe(topic, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
-		c.logger.Info("[MQTT:State] %s -> %s", msg.Topic(), string(msg.Payload()))
-		c.registry.UpdateStateByTopic(msg.Topic(), string(msg.Payload()))
-	})
-	if token.Wait() && token.Error() == nil {
-		c.subscribed[topic] = true
-	}
+	go func(targetTopic string) {
+		c.logger.Info("[MQTT] Subscribing to state topic: %s", targetTopic)
+		token := c.client.Subscribe(targetTopic, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+			c.logger.Info("[MQTT:State] %s -> %s", msg.Topic(), string(msg.Payload()))
+			c.registry.UpdateStateByTopic(msg.Topic(), string(msg.Payload()))
+		})
+		if token.Wait() && token.Error() != nil {
+			c.logger.Warn("[MQTT] Failed to subscribe to state topic %s: %v", targetTopic, token.Error())
+			c.subscribedMu.Lock()
+			delete(c.subscribed, targetTopic)
+			c.subscribedMu.Unlock()
+		} else {
+			c.logger.Info("[MQTT] Successfully subscribed to state topic: %s", targetTopic)
+		}
+	}(topic)
 }
 
 func (c *Client) resubscribeAllStates() {
