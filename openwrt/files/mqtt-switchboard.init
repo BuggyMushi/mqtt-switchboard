@@ -97,6 +97,9 @@ start_service() {
 		-discovery "$discovery_prefix" \
 		-debounce "$debounce_ms"
 
+	[ -n "$broker_user" ] && procd_append_param command -user "$broker_user"
+	[ -n "$broker_pass" ] && procd_append_param command -pass "$broker_pass"
+	[ -n "$broker_client_id" ] && procd_append_param command -client-id "$broker_client_id"
 	[ "$cookie_secure" -eq 1 ] && procd_append_param command -cookie-secure
 
 	# Automatically respawn service if it crashes (5 retries, 3600s reset, 5s delay)

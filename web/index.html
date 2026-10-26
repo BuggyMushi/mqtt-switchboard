@@ -478,6 +478,7 @@
       </svg>
       <h1>MQTT Switchboard</h1>
       <span class="version-tag" id="dash-version">v1.0.0</span>
+      <span class="version-tag" id="mqtt-status-pill">MQTT: 連線中...</span>
     </div>
     <div class="header-actions">
       <div id="order-toolbar" style="display:none; gap:6px;">
@@ -607,6 +608,18 @@
           const data = await res.json();
           if (data.version) {
             document.getElementById('dash-version').innerText = `v${data.version}`;
+          }
+          const mqttEl = document.getElementById('mqtt-status-pill');
+          if (mqttEl) {
+            if (data.mqtt_connected) {
+              mqttEl.innerText = 'MQTT: 已連線';
+              mqttEl.style.color = 'var(--state-on)';
+              mqttEl.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+            } else {
+              mqttEl.innerText = 'MQTT: 斷線中';
+              mqttEl.style.color = '#ef4444';
+              mqttEl.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            }
           }
         }
       } catch (e) {}

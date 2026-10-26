@@ -21,8 +21,11 @@ var (
 	version = "1.0.0"
 
 	flagConfig       = flag.String("config", "", "Path to config.json (optional)")
-	flagListen       = flag.String("listen", "", "Override HTTP listen address (e.g. 127.0.0.1:8080)")
-	flagBroker       = flag.String("broker", "", "Override MQTT Broker URL (e.g. tcp://127.0.0.1:1883)")
+	flagListen       = flag.String("listen", "", "Override HTTP listen address (e.g. 0.0.0.0:8080)")
+	flagBroker       = flag.String("broker", "", "Override MQTT Broker URL (e.g. tcp://192.168.1.100:1883)")
+	flagUser         = flag.String("user", "", "Override MQTT Username")
+	flagPass         = flag.String("pass", "", "Override MQTT Password")
+	flagClientID     = flag.String("client-id", "", "Override MQTT Client ID")
 	flagDiscovery    = flag.String("discovery", "", "Override HA Discovery Prefix (e.g. homeassistant)")
 	flagDebounceMs   = flag.Int("debounce", 0, "Override Relay Debounce in milliseconds (e.g. 1000)")
 	flagCookieSecure = flag.Bool("cookie-secure", false, "Require HTTPS for session cookie")
@@ -53,14 +56,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("Active users: %d, listen target: %s", len(cfg.Users), cfg.Server.Listen)
-
 	// Apply CLI Flag overrides (allows OpenWrt procd / UCI dynamic options)
 	if *flagListen != "" {
 		cfg.Server.Listen = *flagListen
 	}
 	if *flagBroker != "" {
 		cfg.MQTT.Broker = *flagBroker
+	}
+	if *flagUser != "" {
+		cfg.MQTT.Username = *flagUser
+	}
+	if *flagPass != "" {
+		cfg.MQTT.Password = *flagPass
+	}
+	if *flagClientID != "" {
+		cfg.MQTT.ClientID = *flagClientID
 	}
 	if *flagDiscovery != "" {
 		cfg.MQTT.DiscoveryPrefix = *flagDiscovery
@@ -71,6 +81,9 @@ func main() {
 	if *flagCookieSecure {
 		cfg.Server.CookieSecure = true
 	}
+
+	logger.Info("Config loaded: HTTP Listen=%s | MQTT Broker=%s (Client ID: %s, User: '%s', Users: %d)",
+		cfg.Server.Listen, cfg.MQTT.Broker, cfg.MQTT.ClientID, cfg.MQTT.Username, len(cfg.Users))
 
 	// 3. Initialize Auth & Session Manager
 	authMgr := auth.NewManager(

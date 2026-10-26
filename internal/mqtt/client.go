@@ -80,31 +80,41 @@ func NewClient(cfg *config.MQTTConfig, debounceMs int, reg *discovery.Registry, 
 func (c *Client) Start() error {
 	opts := pahomqtt.NewClientOptions()
 	opts.AddBroker(c.cfg.Broker)
-	opts.SetClientID(c.cfg.ClientID)
+
+	clientID := c.cfg.ClientID
+	if clientID == "" {
+		clientID = fmt.Sprintf("mqtt_switchboard_%d", time.Now().UnixNano()%100000)
+	}
+	opts.SetClientID(clientID)
+
 	if c.cfg.Username != "" {
 		opts.SetUsername(c.cfg.Username)
 		opts.SetPassword(c.cfg.Password)
 	}
 	opts.SetKeepAlive(time.Duration(c.cfg.KeepAliveSec) * time.Second)
 	opts.SetAutoReconnect(true)
+	opts.SetConnectRetry(true)
+	opts.SetConnectRetryInterval(5 * time.Second)
 	opts.SetMaxReconnectInterval(10 * time.Second)
+	opts.SetCleanSession(true)
 
 	opts.OnConnect = func(client pahomqtt.Client) {
 		c.isConnected = true
-		c.logger.Info("Connected to MQTT Broker at %s", c.cfg.Broker)
+		c.logger.Info("[MQTT] Successfully connected to broker %s (client_id: %s)", c.cfg.Broker, clientID)
 		c.subscribeDiscovery()
 		c.resubscribeAllStates()
 	}
 
 	opts.OnConnectionLost = func(client pahomqtt.Client, err error) {
 		c.isConnected = false
-		c.logger.Warn("MQTT Broker connection lost: %v", err)
+		c.logger.Warn("[MQTT] Broker connection lost (%s): %v", c.cfg.Broker, err)
 	}
 
+	c.logger.Info("[MQTT] Connecting to broker: %s (client_id: %s, user: '%s')", c.cfg.Broker, clientID, c.cfg.Username)
 	c.client = pahomqtt.NewClient(opts)
 	token := c.client.Connect()
 	if token.Wait() && token.Error() != nil {
-		c.logger.Error("Failed to connect to MQTT broker: %v", token.Error())
+		c.logger.Error("[MQTT] Initial connection to broker (%s) failed: %v (auto-retry active in background)", c.cfg.Broker, token.Error())
 		return token.Error()
 	}
 
@@ -125,18 +135,16 @@ func (c *Client) Stop() {
 
 func (c *Client) subscribeDiscovery() {
 	prefix := c.cfg.DiscoveryPrefix
-	patterns := []string{
-		prefix + "/+/+/config",
-		prefix + "/+/+/+/config",
-	}
-
-	for _, p := range patterns {
-		token := c.client.Subscribe(p, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
-			c.registry.HandleDiscoveryMessage(prefix, msg.Topic(), msg.Payload())
-		})
-		token.Wait()
-	}
-	c.logger.Info("Subscribed to HA Discovery prefix: %s/#", prefix)
+	pattern := prefix + "/#"
+	token := c.client.Subscribe(pattern, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+		topic := msg.Topic()
+		if strings.HasSuffix(topic, "/config") {
+			c.logger.Info("[MQTT:Discovery] Received config on %s (bytes: %d)", topic, len(msg.Payload()))
+			c.registry.HandleDiscoveryMessage(prefix, topic, msg.Payload())
+		}
+	})
+	token.Wait()
+	c.logger.Info("Subscribed to HA Discovery wildcard: %s", pattern)
 }
 
 // SubscribeStateTopic dynamically subscribes to a device state topic
@@ -152,7 +160,9 @@ func (c *Client) SubscribeStateTopic(topic string) {
 		return
 	}
 
+	c.logger.Info("[MQTT] Subscribing to state topic: %s", topic)
 	token := c.client.Subscribe(topic, 0, func(_ pahomqtt.Client, msg pahomqtt.Message) {
+		c.logger.Info("[MQTT:State] %s -> %s", msg.Topic(), string(msg.Payload()))
 		c.registry.UpdateStateByTopic(msg.Topic(), string(msg.Payload()))
 	})
 	if token.Wait() && token.Error() == nil {
