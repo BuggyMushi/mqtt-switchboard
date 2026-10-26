@@ -28,16 +28,16 @@
       "id": "relay_ch1",
       "name": "走廊保溫燈 (繼電器 1)",
       "component": "switch",
-      "cmd_topic": "mushi/relay8ch/ch1/set",
-      "state_topic": "mushi/relay8ch/ch1/state",
+      "cmd_topic": "iot/relay8ch/ch1/set",
+      "state_topic": "iot/relay8ch/ch1/state",
       "payload_on": "ON",
       "payload_off": "OFF"
     },
     {
-      "id": "egg_roller_trigger",
-      "name": "手動滾蛋 (EggRoller)",
+      "id": "roller_trigger",
+      "name": "手動滾軸觸發器",
       "component": "button",
-      "cmd_topic": "mushi/eggroller/ManualRoll",
+      "cmd_topic": "iot/roller/trigger",
       "payload_press": "switch"
     }
   ]

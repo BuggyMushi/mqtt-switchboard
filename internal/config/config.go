@@ -65,7 +65,7 @@ type Config struct {
 func LoadConfig(path string) (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
-			Listen:             "127.0.0.1:8080",
+			Listen:             "0.0.0.0:8080",
 			SessionTimeoutDays: 7,
 			DebounceMs:         1000,
 			CookieSecure:       false,
@@ -82,19 +82,42 @@ func LoadConfig(path string) (*Config, error) {
 		},
 	}
 
-	if path != "" {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("read config file: %w", err)
+	// 1. Auto-discover config file if not explicitly passed
+	targetPath := path
+	if targetPath == "" {
+		candidates := []string{
+			"/etc/mqtt-switchboard/config.json",
+			"./config.json",
 		}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("parse config json: %w", err)
+		for _, c := range candidates {
+			if _, err := os.Stat(c); err == nil {
+				targetPath = c
+				break
+			}
+		}
+	}
+
+	// 2. Load JSON if candidate or path found
+	if targetPath != "" {
+		data, err := os.ReadFile(targetPath)
+		if err == nil {
+			_ = json.Unmarshal(data, cfg)
+		}
+	}
+
+	// 3. Ensure fallback default user if no users defined
+	if len(cfg.Users) == 0 {
+		cfg.Users = []UserConfig{
+			{
+				Username: "admin",
+				Password: "admin",
+			},
 		}
 	}
 
 	// Validate & ensure fallbacks
 	if cfg.Server.Listen == "" {
-		cfg.Server.Listen = "127.0.0.1:8080"
+		cfg.Server.Listen = "0.0.0.0:8080"
 	}
 	if cfg.Server.DebounceMs <= 0 {
 		cfg.Server.DebounceMs = 1000

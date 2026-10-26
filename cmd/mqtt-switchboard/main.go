@@ -53,6 +53,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger.Info("Active users: %d, listen target: %s", len(cfg.Users), cfg.Server.Listen)
+
 	// Apply CLI Flag overrides (allows OpenWrt procd / UCI dynamic options)
 	if *flagListen != "" {
 		cfg.Server.Listen = *flagListen

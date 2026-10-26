@@ -26,37 +26,37 @@ func NewLogger(tag string) Logger {
 
 func (l *unixSyslogger) Action(user, device, cmd, ip string) {
 	msg := formatAction(user, device, cmd, ip)
-	if err := l.writer.Info(msg); err != nil {
-		log.Printf("[%s:ACTION] %s", l.tag, msg)
-	}
+	fmt.Fprintf(os.Stderr, "[%s:ACTION] %s\n", l.tag, msg)
+	_ = l.writer.Info(msg)
 }
 
 func (l *unixSyslogger) AuthFail(user, ip, reason string) {
 	msg := formatAuthFail(user, ip, reason)
-	if err := l.writer.Warning(msg); err != nil {
-		log.Printf("[%s:AUTH_FAIL] %s", l.tag, msg)
-	}
+	fmt.Fprintf(os.Stderr, "[%s:AUTH_FAIL] %s\n", l.tag, msg)
+	_ = l.writer.Warning(msg)
 }
 
 func (l *unixSyslogger) DeviceError(device, reason string) {
 	msg := formatDeviceError(device, reason)
-	if err := l.writer.Err(msg); err != nil {
-		log.Printf("[%s:DEVICE_ERROR] %s", l.tag, msg)
-	}
+	fmt.Fprintf(os.Stderr, "[%s:DEVICE_ERROR] %s\n", l.tag, msg)
+	_ = l.writer.Err(msg)
 }
 
 func (l *unixSyslogger) Info(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
+	fmt.Fprintf(os.Stderr, "[%s:INFO] %s\n", l.tag, msg)
 	_ = l.writer.Info(msg)
 }
 
 func (l *unixSyslogger) Warn(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
+	fmt.Fprintf(os.Stderr, "[%s:WARN] %s\n", l.tag, msg)
 	_ = l.writer.Warning(msg)
 }
 
 func (l *unixSyslogger) Error(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
+	fmt.Fprintf(os.Stderr, "[%s:ERROR] %s\n", l.tag, msg)
 	_ = l.writer.Err(msg)
 }
 

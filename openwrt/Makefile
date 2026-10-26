@@ -9,7 +9,7 @@ PKG_SOURCE_URL:=https://github.com/your-repo/mqtt-switchboard.git
 PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 
 PKG_LICENSE:=MIT
-PKG_MAINTAINER:=Mushi Developer <dev@example.com>
+PKG_MAINTAINER:=OpenWrt Community Developer <developer@example.com>
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1

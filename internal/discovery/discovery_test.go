@@ -40,8 +40,8 @@ func TestRegistry_DiscoveryAndUnregister(t *testing.T) {
 	payload := []byte(`{
 		"name": "Channel 1",
 		"unique_id": "relay_ch1",
-		"command_topic": "mushi/relay/ch1/set",
-		"state_topic": "mushi/relay/ch1/state",
+		"command_topic": "iot/relay/ch1/set",
+		"state_topic": "iot/relay/ch1/state",
 		"payload_on": "ON",
 		"payload_off": "OFF"
 	}`)
@@ -51,7 +51,7 @@ func TestRegistry_DiscoveryAndUnregister(t *testing.T) {
 	if reg.Count() != 1 {
 		t.Fatalf("expected 1 registered device, got %d", reg.Count())
 	}
-	if notifiedTopic != "mushi/relay/ch1/state" {
+	if notifiedTopic != "iot/relay/ch1/state" {
 		t.Fatalf("expected state topic notification, got %s", notifiedTopic)
 	}
 
@@ -61,7 +61,7 @@ func TestRegistry_DiscoveryAndUnregister(t *testing.T) {
 	}
 
 	// Update state via state topic
-	reg.UpdateStateByTopic("mushi/relay/ch1/state", "ON")
+	reg.UpdateStateByTopic("iot/relay/ch1/state", "ON")
 	dev, _ = reg.GetByID("relay_ch1")
 	if dev.State != "ON" || notifiedState != "ON" {
 		t.Fatalf("expected state ON, got %s", dev.State)
@@ -71,5 +71,54 @@ func TestRegistry_DiscoveryAndUnregister(t *testing.T) {
 	reg.HandleDiscoveryMessage(prefix, topic, []byte(""))
 	if reg.Count() != 0 {
 		t.Fatalf("expected device unregister, got %d", reg.Count())
+	}
+}
+
+func TestRegistry_HAAbbreviationsAndGrouping(t *testing.T) {
+	var subscribedTopics []string
+	reg := NewRegistry(
+		func(topic string) { subscribedTopics = append(subscribedTopics, topic) },
+		nil,
+	)
+
+	prefix := "homeassistant"
+	// Relay CH1 discovery payload using official abbreviations
+	topicCH1 := "homeassistant/switch/SmartRelay_FACD_CH1/config"
+	payloadCH1 := []byte(`{
+		"name": "SmartRelay_CH1",
+		"uniq_id": "SmartRelay_FACD_CH1",
+		"stat_t": "iot/SmartRelay_FACD/Switch/1/status",
+		"cmd_t": "iot/SmartRelay_FACD/Switch/1/set",
+		"pl_on": "ON",
+		"pl_off": "OFF",
+		"dev": {
+			"ids": ["SmartRelay_FACD"],
+			"name": "SmartRelay_FACD",
+			"mdl": "Smart Relay 8CH"
+		}
+	}`)
+
+	reg.HandleDiscoveryMessage(prefix, topicCH1, payloadCH1)
+
+	dev, ok := reg.GetByID("SmartRelay_FACD_CH1")
+	if !ok {
+		t.Fatalf("failed to parse CH1 entity with abbreviations")
+	}
+
+	if dev.StateTopic != "iot/SmartRelay_FACD/Switch/1/status" {
+		t.Fatalf("stat_t abbreviation failed: got %s", dev.StateTopic)
+	}
+	if dev.CommandTopic != "iot/SmartRelay_FACD/Switch/1/set" {
+		t.Fatalf("cmd_t abbreviation failed: got %s", dev.CommandTopic)
+	}
+	if dev.DeviceID != "SmartRelay_FACD" {
+		t.Fatalf("expected DeviceID SmartRelay_FACD, got %s", dev.DeviceID)
+	}
+
+	// Update state
+	reg.UpdateStateByTopic("iot/SmartRelay_FACD/Switch/1/status", "ON")
+	dev, _ = reg.GetByID("SmartRelay_FACD_CH1")
+	if dev.State != "ON" {
+		t.Fatalf("expected state ON, got %s", dev.State)
 	}
 }

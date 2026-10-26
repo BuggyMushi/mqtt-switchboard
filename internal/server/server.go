@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -75,6 +76,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("GET /api/devices", s.requireAuth(s.handleGetDevices))
 	mux.HandleFunc("POST /api/devices/{id}/action", s.requireAuth(s.handleDeviceAction))
+	mux.HandleFunc("GET /api/layout", s.requireAuth(s.handleGetLayout))
+	mux.HandleFunc("POST /api/layout", s.requireAuth(s.handleSaveLayout))
 	mux.HandleFunc("GET /api/events", s.requireAuth(s.handleSSE))
 
 	// Embedded Web UI
@@ -270,6 +273,59 @@ func (s *Server) handleDeviceAction(w http.ResponseWriter, r *http.Request) {
 		"success":   true,
 		"device_id": deviceID,
 	})
+}
+
+func getLayoutFilePath() string {
+	if _, err := os.Stat("/etc/mqtt-switchboard"); err == nil {
+		return "/etc/mqtt-switchboard/layout.json"
+	}
+	return "./layout.json"
+}
+
+type layoutPayload struct {
+	Order []string `json:"order"`
+}
+
+func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
+	path := getLayoutFilePath()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		writeJSON(w, http.StatusOK, layoutPayload{Order: []string{}})
+		return
+	}
+	var l layoutPayload
+	if err := json.Unmarshal(data, &l); err != nil {
+		writeJSON(w, http.StatusOK, layoutPayload{Order: []string{}})
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
+}
+
+func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
+	user := r.Header.Get("X-Authenticated-User")
+	clientIP := auth.GetRealIP(r)
+
+	var req layoutPayload
+	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid format"}`, http.StatusBadRequest)
+		return
+	}
+
+	data, err := json.MarshalIndent(req, "", "  ")
+	if err != nil {
+		http.Error(w, `{"error":"serialize failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	path := getLayoutFilePath()
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		http.Error(w, `{"error":"write failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	s.logger.Action(user, "layout", "SAVE_DEFAULT_ORDER", clientIP)
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {

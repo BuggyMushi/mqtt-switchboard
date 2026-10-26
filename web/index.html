@@ -11,7 +11,9 @@
     :root {
       --bg-color: #0b0f19;
       --card-bg: rgba(22, 30, 49, 0.75);
-      --card-border: rgba(255, 255, 255, 0.1);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --item-bg: rgba(255, 255, 255, 0.04);
+      --item-border: rgba(255, 255, 255, 0.08);
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
       --accent: #38bdf8;
@@ -20,16 +22,18 @@
       --state-off: #475569;
       --state-on-glow: rgba(34, 197, 94, 0.35);
       --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      --transition-speed: 0.2s;
+      --transition-speed: 0.15s;
     }
 
     /* -------------------------------------------------------------
-       2. E-Ink / High-Contrast Monochrome Mode
+       2. E-Ink / High-Contrast Monochrome Mode (?eink=1)
        ------------------------------------------------------------- */
     body.eink-mode {
       --bg-color: #ffffff !important;
       --card-bg: #ffffff !important;
       --card-border: #000000 !important;
+      --item-bg: #ffffff !important;
+      --item-border: #000000 !important;
       --text-main: #000000 !important;
       --text-muted: #222222 !important;
       --accent: #000000 !important;
@@ -47,29 +51,21 @@
       text-shadow: none !important;
     }
 
-    body.eink-mode .card {
+    body.eink-mode .card,
+    body.eink-mode .entity-item,
+    body.eink-mode .btn,
+    body.eink-mode .order-btn {
       border: 2px solid #000000 !important;
       border-radius: 0px !important;
     }
 
-    body.eink-mode .badge-on {
+    body.eink-mode .entity-on {
       background-color: #000000 !important;
       color: #ffffff !important;
-      border: 1px solid #000000 !important;
     }
 
-    body.eink-mode .badge-off {
-      background-color: #ffffff !important;
-      color: #000000 !important;
-      border: 1px solid #000000 !important;
-    }
-
-    body.eink-mode .btn {
-      border: 2px solid #000000 !important;
-      border-radius: 0px !important;
-      background: #ffffff !important;
-      color: #000000 !important;
-      font-weight: bold !important;
+    body.eink-mode .entity-on * {
+      color: #ffffff !important;
     }
 
     /* -------------------------------------------------------------
@@ -96,9 +92,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 16px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--card-border);
-      margin-bottom: 24px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .brand {
@@ -113,6 +111,15 @@
       letter-spacing: 0.5px;
     }
 
+    .version-tag {
+      font-size: 0.72rem;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
     .header-actions {
       display: flex;
       gap: 8px;
@@ -123,23 +130,23 @@
       background: transparent;
       border: 1px solid var(--card-border);
       color: var(--text-muted);
-      padding: 4px 10px;
-      font-size: 0.8rem;
+      padding: 5px 11px;
+      font-size: 0.82rem;
       border-radius: 6px;
       cursor: pointer;
     }
 
-    .badge-btn:hover {
+    .badge-btn:hover, .badge-btn.active {
       color: var(--text-main);
-      border-color: var(--text-main);
+      border-color: var(--accent);
     }
 
     /* -------------------------------------------------------------
-       4. Card Grid Layout
+       4. Device Grid & Grouped Cards
        ------------------------------------------------------------- */
     .grid-container {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 16px;
       flex: 1;
     }
@@ -148,98 +155,191 @@
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform var(--transition-speed), border-color var(--transition-speed);
+      position: relative;
+    }
+
+    .card:hover {
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--item-border);
+      padding-bottom: 8px;
+      gap: 10px;
+    }
+
+    .device-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+
+    .device-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Manufacturer & Firmware Telemetry Badge */
+    .device-meta-pill {
+      font-size: 0.7rem;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    /* Order Adjust Controls (Shown only during Order Edit Mode) */
+    .card-order-controls {
+      display: none;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    body.order-mode .card-order-controls {
+      display: flex;
+    }
+
+    .order-btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 4px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .order-btn:hover {
+      background: var(--accent);
+      color: #0b0f19;
+    }
+
+    /* -------------------------------------------------------------
+       5. Multi-Entity Channel Grid (e.g. 8CH Relays in One Card)
+       ------------------------------------------------------------- */
+    .entity-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 8px;
+    }
+
+    .entity-item {
+      background: var(--item-bg);
+      border: 1px solid var(--item-border);
+      border-radius: 8px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       user-select: none;
       cursor: pointer;
       position: relative;
-      overflow: hidden;
-      min-height: 140px;
-      transition: transform var(--transition-speed), border-color var(--transition-speed);
+      min-height: 68px;
+      transition: background var(--transition-speed), border-color var(--transition-speed);
     }
 
-    .card:hover {
+    .entity-item:hover {
       border-color: var(--accent);
-      transform: translateY(-2px);
     }
 
-    .card:active {
-      transform: translateY(0);
+    .entity-item.is-sensor {
+      cursor: default;
+      grid-column: 1 / -1;
+      flex-direction: row;
+      align-items: center;
+      min-height: 36px;
+      padding: 6px 12px;
     }
 
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 12px;
+    .entity-item.is-cover {
+      grid-column: 1 / -1;
+      cursor: default;
     }
 
-    .card-title {
-      font-size: 1.1rem;
+    .entity-on {
+      background: rgba(34, 197, 94, 0.15) !important;
+      border-color: rgba(34, 197, 94, 0.5) !important;
+      box-shadow: inset 0 0 10px var(--state-on-glow);
+    }
+
+    .entity-name {
+      font-size: 0.85rem;
       font-weight: 600;
       color: var(--text-main);
-      word-break: break-word;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .card-type {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-top: 2px;
-    }
-
-    .card-footer {
+    .entity-state {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 6px;
+      color: var(--text-muted);
     }
 
-    .status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 20px;
+    .entity-on .entity-state {
+      color: var(--state-on);
     }
 
-    .dot {
-      width: 8px;
-      height: 8px;
+    .state-dot {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: currentColor;
+      display: inline-block;
     }
 
-    .badge-on {
-      color: var(--state-on);
-      background: rgba(34, 197, 94, 0.15);
-      box-shadow: 0 0 10px var(--state-on-glow);
+    /* Cover Actions */
+    .cover-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
     }
 
-    .badge-off {
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.05);
+    .cover-btn {
+      flex: 1;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
     }
 
-    .badge-sensor {
-      color: var(--accent);
-      background: rgba(56, 189, 248, 0.15);
+    .cover-btn:hover {
+      background: var(--accent);
+      color: #0b0f19;
     }
 
-    /* -------------------------------------------------------------
-       5. Debounce & Loading States (Anti-Spam Click)
-       ------------------------------------------------------------- */
-    .card.loading {
+    /* Debounce & Loading States */
+    .entity-item.loading {
       pointer-events: none !important;
-      opacity: 0.65;
+      opacity: 0.6;
     }
 
-    .card.loading::after {
-      content: "處理中...";
+    .entity-item.loading::after {
+      content: "...";
       position: absolute;
       inset: 0;
       background: rgba(11, 15, 25, 0.7);
@@ -250,7 +350,7 @@
       color: var(--text-main);
     }
 
-    body.eink-mode .card.loading::after {
+    body.eink-mode .entity-item.loading::after {
       background: rgba(255, 255, 255, 0.9) !important;
       color: #000000 !important;
       border: 2px dashed #000000 !important;
@@ -338,11 +438,6 @@
       display: none;
     }
 
-    body.eink-mode .error-msg {
-      color: #000000 !important;
-      font-weight: bold;
-    }
-
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -382,8 +477,14 @@
         <line x1="6" y1="18" x2="6.01" y2="18"></line>
       </svg>
       <h1>MQTT Switchboard</h1>
+      <span class="version-tag" id="dash-version">v1.0.0</span>
     </div>
     <div class="header-actions">
+      <div id="order-toolbar" style="display:none; gap:6px;">
+        <button class="badge-btn" onclick="publishGlobalOrder()" title="將當前排序儲存至伺服器作為全域預設">[💾 佈達預設]</button>
+        <button class="badge-btn" onclick="resetToGlobalOrder()" title="清除本機快取，恢復跟隨全域預設">[↺ 恢復預設]</button>
+      </div>
+      <button class="badge-btn" id="order-mode-btn" onclick="toggleOrderMode()">[排序]</button>
       <button class="badge-btn" id="toggle-eink" onclick="toggleEinkMode()">[E-Ink]</button>
       <button class="badge-btn" onclick="logout()">登出</button>
     </div>
@@ -391,12 +492,15 @@
 
   <!-- Device Grid -->
   <main class="grid-container" id="device-grid">
-    <div class="empty-state">正在尋找設備 (等待 HA Discovery 或靜態配置)...</div>
+    <div class="empty-state">正在尋找設備 (監聽 homeassistant/# 與靜態配置)...</div>
   </main>
 
   <script>
-    let devices = {};
+    let rawEntities = {};
     let isEink = false;
+    let isOrderMode = false;
+    let globalOrder = [];
+    let customOrder = []; // Active display order
 
     // Detect E-Ink from URL query e.g. ?eink=1
     const urlParams = new URLSearchParams(window.location.search);
@@ -419,12 +523,74 @@
       }
     }
 
-    // 1. Session Check & Login Handling
+    function toggleOrderMode() {
+      isOrderMode = !isOrderMode;
+      const btn = document.getElementById('order-mode-btn');
+      const toolbar = document.getElementById('order-toolbar');
+      if (isOrderMode) {
+        document.body.classList.add('order-mode');
+        btn.classList.add('active');
+        btn.innerText = '[完成排序]';
+        toolbar.style.display = 'flex';
+      } else {
+        document.body.classList.remove('order-mode');
+        btn.classList.remove('active');
+        btn.innerText = '[排序]';
+        toolbar.style.display = 'none';
+      }
+      render();
+    }
+
+    function moveCard(grpKey, direction) {
+      const idx = customOrder.indexOf(grpKey);
+      if (idx === -1) return;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= customOrder.length) return;
+
+      const temp = customOrder[idx];
+      customOrder[idx] = customOrder[newIdx];
+      customOrder[newIdx] = temp;
+
+      // Save user-specific override to LocalStorage
+      localStorage.setItem('switchboard_card_order', JSON.stringify(customOrder));
+      render();
+    }
+
+    async function publishGlobalOrder() {
+      if (!confirm('確定要將目前的卡片順序「佈達為全域預設值」嗎？\n所有未個別自訂順序的裝置將會自動跟隨此排列。')) return;
+      try {
+        const res = await fetch('/api/layout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: customOrder })
+        });
+        if (res.ok) {
+          globalOrder = [...customOrder];
+          alert('已成功儲存並佈達為全域預設順序！');
+        } else {
+          alert('儲存全域預設失敗');
+        }
+      } catch (err) {
+        alert('網路連線失敗');
+      }
+    }
+
+    function resetToGlobalOrder() {
+      if (!confirm('確定要清除此瀏覽器的個別排序，並恢復跟隨全域預設嗎？')) return;
+      localStorage.removeItem('switchboard_card_order');
+      const presentKeys = getPresentGroupKeys();
+      customOrder = determineActiveOrder(presentKeys);
+      render();
+      alert('已恢復跟隨伺服器全域預設順序！');
+    }
+
+    // 1. Session Check & Health / Version Fetch
     async function checkAuth() {
       try {
         const res = await fetch('/api/me');
         if (res.ok) {
           document.getElementById('login-overlay').style.display = 'none';
+          fetchHealth();
           initDashboard();
         } else {
           document.getElementById('login-overlay').style.display = 'flex';
@@ -432,6 +598,18 @@
       } catch (err) {
         document.getElementById('login-overlay').style.display = 'flex';
       }
+    }
+
+    async function fetchHealth() {
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.version) {
+            document.getElementById('dash-version').innerText = `v${data.version}`;
+          }
+        }
+      } catch (e) {}
     }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -449,6 +627,7 @@
         });
         if (res.ok) {
           document.getElementById('login-overlay').style.display = 'none';
+          fetchHealth();
           initDashboard();
         } else {
           const data = await res.json().catch(() => ({}));
@@ -466,8 +645,49 @@
       window.location.reload();
     }
 
+    async function fetchLayout() {
+      try {
+        const res = await fetch('/api/layout');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.order)) {
+            globalOrder = data.order;
+          }
+        }
+      } catch (err) {}
+    }
+
+    function getPresentGroupKeys() {
+      const keys = new Set();
+      Object.keys(rawEntities).forEach(id => {
+        keys.add(rawEntities[id].device_id || 'standalone');
+      });
+      return Array.from(keys);
+    }
+
+    function determineActiveOrder(presentKeys) {
+      let baseOrder = [];
+      const saved = localStorage.getItem('switchboard_card_order');
+      if (saved) {
+        try { baseOrder = JSON.parse(saved); } catch (e) {}
+      } else if (globalOrder.length > 0) {
+        baseOrder = [...globalOrder];
+      }
+
+      // Filter out stale/ghost devices that disappeared or went offline
+      let active = baseOrder.filter(k => presentKeys.includes(k));
+
+      // Append newly discovered devices to the end
+      presentKeys.forEach(k => {
+        if (!active.includes(k)) active.push(k);
+      });
+
+      return active;
+    }
+
     // 2. Fetch Devices & Realtime Event Setup
     async function initDashboard() {
+      await fetchLayout();
       await loadDevices();
       startSSE();
     }
@@ -477,8 +697,8 @@
         const res = await fetch('/api/devices');
         if (res.ok) {
           const list = await res.json();
-          devices = {};
-          list.forEach(d => devices[d.id] = d);
+          rawEntities = {};
+          list.forEach(d => rawEntities[d.id] = d);
           render();
         }
       } catch (err) {
@@ -491,85 +711,167 @@
       sse.addEventListener('device', (e) => {
         try {
           const dev = JSON.parse(e.data);
-          devices[dev.id] = dev;
+          rawEntities[dev.id] = dev;
           render();
         } catch (err) {}
       });
       sse.onerror = () => {
-        // Fallback polling every 4 seconds if SSE disconnects
         setTimeout(loadDevices, 4000);
       };
     }
 
-    // 3. Render Cards
+    // 3. Grouping & Rendering (e.g. Group all 8 CH relays into one Smart Relay Card)
     function render() {
       const grid = document.getElementById('device-grid');
-      const keys = Object.keys(devices);
-      if (keys.length === 0) {
+      const entityIds = Object.keys(rawEntities);
+      if (entityIds.length === 0) {
         grid.innerHTML = '<div class="empty-state">尚無設備上線。<br>正在監聽 homeassistant/# 與靜態配置...</div>';
         return;
       }
 
+      // Group entities by device_id
+      const deviceGroups = {};
+      entityIds.forEach(id => {
+        const ent = rawEntities[id];
+        const devID = ent.device_id || 'standalone';
+        if (!deviceGroups[devID]) {
+          deviceGroups[devID] = {
+            id: devID,
+            name: ent.device_name || devID,
+            model: ent.device_model || '',
+            manufacturer: ent.manufacturer || '',
+            firmware: ent.firmware || '',
+            entities: []
+          };
+        }
+        deviceGroups[devID].entities.push(ent);
+        // Inherit metadata if any entity has it
+        if (!deviceGroups[devID].manufacturer && ent.manufacturer) deviceGroups[devID].manufacturer = ent.manufacturer;
+        if (!deviceGroups[devID].firmware && ent.firmware) deviceGroups[devID].firmware = ent.firmware;
+        if (!deviceGroups[devID].model && ent.device_model) deviceGroups[devID].model = ent.device_model;
+      });
+
+      // Synchronize and filter order: handle disappeared devices & new additions
+      const presentKeys = Object.keys(deviceGroups);
+      customOrder = determineActiveOrder(presentKeys);
+
       grid.innerHTML = '';
-      keys.sort().forEach(id => {
-        const dev = devices[id];
+
+      customOrder.forEach((grpKey, index) => {
+        const group = deviceGroups[grpKey];
+        if (!group) return;
+
+        // Sort entities inside group naturally (e.g. CH1, CH2 ... CH8)
+        group.entities.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
         const card = document.createElement('div');
         card.className = 'card';
-        card.id = `card-${dev.id}`;
+        card.id = `group-${group.id}`;
 
-        let badgeClass = 'badge-off';
-        let statusText = dev.state || 'OFF';
+        // Construct Telemetry Badge: [ Brand · Model · vFW ]
+        let metaParts = [];
+        if (group.manufacturer) metaParts.push(group.manufacturer);
+        if (group.model) metaParts.push(group.model);
+        if (group.firmware) metaParts.push(`v${group.firmware}`);
+        const metaText = metaParts.join(' · ');
 
-        if (dev.component === 'sensor') {
-          badgeClass = 'badge-sensor';
-          statusText = dev.unit ? `${dev.state} ${dev.unit}` : dev.state;
-        } else if (dev.state === 'ON' || dev.state === dev.payload_on) {
-          badgeClass = 'badge-on';
-          statusText = 'ON';
-        }
+        let cardHTML = `
+          <!-- Order Adjust Bar (Visible only in Order Mode) -->
+          <div class="card-order-controls">
+            <button class="order-btn" onclick="moveCard('${group.id}', -1)" ${index === 0 ? 'disabled' : ''}>◀ 往前</button>
+            <button class="order-btn" onclick="moveCard('${group.id}', 1)" ${index === customOrder.length - 1 ? 'disabled' : ''}>往後 ▶</button>
+          </div>
 
-        card.innerHTML = `
-          <div class="card-header">
+          <div class="device-header">
             <div>
-              <div class="card-title">${escapeHTML(dev.name)}</div>
-              <div class="card-type">${escapeHTML(dev.component)}</div>
+              <div class="device-title">${escapeHTML(group.name)}</div>
+              <div class="device-subtitle">${escapeHTML(group.id)}</div>
             </div>
+            ${metaText ? `<div class="device-meta-pill" title="廠商: ${escapeHTML(group.manufacturer || 'N/A')}, 韌體: ${escapeHTML(group.firmware || 'N/A')}">${escapeHTML(metaText)}</div>` : ''}
           </div>
-          <div class="card-footer">
-            <span class="status-indicator ${badgeClass}">
-              <span class="dot"></span>
-              <span>${escapeHTML(statusText)}</span>
-            </span>
-          </div>
+          <div class="entity-list">
         `;
 
-        // Click Handler (with 1s frontend debounce)
-        if (dev.component === 'switch' || dev.component === 'light' || dev.component === 'button') {
-          card.onclick = () => handleAction(dev.id);
-        } else {
-          card.style.cursor = 'default';
-        }
+        group.entities.forEach(ent => {
+          const isSwitch = (ent.component === 'switch' || ent.component === 'light');
+          const isButton = (ent.component === 'button');
+          const isCover = (ent.component === 'cover');
+          const isSensor = (ent.component === 'sensor' || ent.component === 'binary_sensor');
+          const isOn = (ent.state === 'ON' || ent.state === ent.payload_on);
 
+          let itemClass = 'entity-item';
+          if (isOn && isSwitch) itemClass += ' entity-on';
+          if (isSensor) itemClass += ' is-sensor';
+          if (isCover) itemClass += ' is-cover';
+
+          // Clean display name (remove redundant device prefix if present)
+          let shortName = ent.name;
+          if (shortName.startsWith(group.name + "_")) {
+            shortName = shortName.substring(group.name.length + 1);
+          } else if (shortName.startsWith(group.name + " ")) {
+            shortName = shortName.substring(group.name.length + 1);
+          }
+
+          if (isCover) {
+            cardHTML += `
+              <div class="${itemClass}" id="entity-${ent.id}">
+                <div class="entity-name">${escapeHTML(shortName)}</div>
+                <div class="cover-actions">
+                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'OPEN')">▲ 開</button>
+                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'STOP')">■ 停</button>
+                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'CLOSE')">▼ 關</button>
+                </div>
+              </div>
+            `;
+          } else if (isSensor) {
+            let displayVal = ent.state || 'N/A';
+            if (ent.unit) displayVal += ` ${ent.unit}`;
+            cardHTML += `
+              <div class="${itemClass}" id="entity-${ent.id}">
+                <span class="entity-name">${escapeHTML(shortName)}</span>
+                <span style="font-weight:700; color:var(--accent);">${escapeHTML(displayVal)}</span>
+              </div>
+            `;
+          } else {
+            // Switch, Light, Button
+            let statusText = ent.state || 'OFF';
+            if (isButton) statusText = '觸發';
+
+            cardHTML += `
+              <div class="${itemClass}" id="entity-${ent.id}" onclick="handleAction('${ent.id}')">
+                <div class="entity-name">${escapeHTML(shortName)}</div>
+                <div class="entity-state">
+                  <span>${escapeHTML(statusText)}</span>
+                  ${isSwitch ? '<span class="state-dot"></span>' : ''}
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        cardHTML += `</div>`;
+        card.innerHTML = cardHTML;
         grid.appendChild(card);
       });
     }
 
-    // 4. Trigger Action with 1-Second Lock
-    async function handleAction(id) {
-      const card = document.getElementById(`card-${id}`);
-      if (!card || card.classList.contains('loading')) return;
+    // 4. Trigger Action with 1-Second Debounce Protection
+    async function handleAction(id, explicitAction = '') {
+      const el = document.getElementById(`entity-${id}`);
+      if (!el || el.classList.contains('loading')) return;
 
-      // Lock card for 1 second immediately
-      card.classList.add('loading');
+      // Lock element for 1 second immediately to prevent spam click
+      el.classList.add('loading');
       setTimeout(() => {
-        card.classList.remove('loading');
+        el.classList.remove('loading');
       }, 1000);
 
       try {
+        const bodyData = explicitAction ? { action: explicitAction } : {};
         const res = await fetch(`/api/devices/${encodeURIComponent(id)}/action`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
+          body: JSON.stringify(bodyData)
         });
         if (!res.ok && res.status === 429) {
           console.warn('Backend debounce active');
@@ -586,7 +888,7 @@
       );
     }
 
-    // Run check on startup
+    // Startup
     checkAuth();
   </script>
 </body>

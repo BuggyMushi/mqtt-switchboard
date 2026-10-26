@@ -53,7 +53,11 @@ jobs:
             export ${{ matrix.extra_env }}
           fi
           go mod tidy
-          go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
+          APP_VER="${{ github.ref_name }}"
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            APP_VER="1.0.0-${{ github.ref_name }}-$(git rev-parse --short HEAD)"
+          fi
+          go build -trimpath -ldflags="-s -w -X main.version=${APP_VER}" \
             -o dist/mqtt-switchboard-${{ matrix.name_suffix }} ./cmd/mqtt-switchboard
 
       - name: Upload Build Artifact
