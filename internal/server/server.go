@@ -152,7 +152,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	clientIP := auth.GetRealIP(r)
 
 	// Check if IP is currently locked out
-	if locked, remaining := s.authMgr.IsIPLocked(clientIP); locked {
+	if locked, _ := s.authMgr.IsIPLocked(clientIP); locked {
 		s.logger.AuthFail("unknown", clientIP, "IP_LOCKED_15M")
 		http.Error(w, `{"error":"Too many failed attempts. Try again later."}`, http.StatusTooManyRequests)
 		return

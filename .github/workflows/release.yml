@@ -52,6 +52,7 @@ jobs:
           if [ -n "${{ matrix.extra_env }}" ]; then
             export ${{ matrix.extra_env }}
           fi
+          go mod tidy
           go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
             -o dist/mqtt-switchboard-${{ matrix.name_suffix }} ./cmd/mqtt-switchboard
 
