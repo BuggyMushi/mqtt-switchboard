@@ -18,6 +18,7 @@ type DeviceEntity struct {
 	PayloadOff        string    `json:"payload_off,omitempty"`
 	PayloadPress      string    `json:"payload_press,omitempty"`
 	UnitOfMeasurement string    `json:"unit,omitempty"`
+	State             string    `json:"state"`
 	DeviceID          string    `json:"device_id"`          // Identifier for multi-channel grouping
 	DeviceName        string    `json:"device_name"`        // Friendly name of parent device
 	DeviceModel       string    `json:"device_model"`       // Hardware model
