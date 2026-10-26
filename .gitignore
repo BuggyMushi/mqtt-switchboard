@@ -1,0 +1,27 @@
+# Binaries & build artifacts
+dist/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Local sensitive configuration
+config.json
+
+# Internal guides & integration docs
+DEVELOPMENT_GUIDE.md
+LUCI_INTEGRATION.md
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

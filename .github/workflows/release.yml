@@ -1,0 +1,88 @@
+name: Release Multi-Arch Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Multi-Arch Static Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            extra_env: ""
+            name_suffix: linux-amd64
+          - os: linux
+            arch: arm64
+            extra_env: ""
+            name_suffix: linux-arm64
+          - os: linux
+            arch: arm
+            extra_env: "GOARM=7"
+            name_suffix: linux-armv7
+          - os: linux
+            arch: mipsle
+            extra_env: "GOMIPS=softfloat"
+            name_suffix: linux-mipsle
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Build Binary
+        run: |
+          mkdir -p dist
+          export CGO_ENABLED=0
+          export GOOS=${{ matrix.os }}
+          export GOARCH=${{ matrix.arch }}
+          if [ -n "${{ matrix.extra_env }}" ]; then
+            export ${{ matrix.extra_env }}
+          fi
+          go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
+            -o dist/mqtt-switchboard-${{ matrix.name_suffix }} ./cmd/mqtt-switchboard
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.name_suffix }}
+          path: dist/mqtt-switchboard-${{ matrix.name_suffix }}
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p final-assets
+          find release-artifacts -type f -exec mv {} final-assets/ \;
+          cd final-assets
+          sha256sum * > SHA256SUMS.txt
+          ls -lh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            final-assets/*
+          generate_release_notes: true

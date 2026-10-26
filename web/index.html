@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>MQTT Switchboard</title>
+  <style>
+    /* -------------------------------------------------------------
+       1. Base System Tokens (Default: Modern Dark Glassmorphism)
+       ------------------------------------------------------------- */
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --state-on: #22c55e;
+      --state-off: #475569;
+      --state-on-glow: rgba(34, 197, 94, 0.35);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --transition-speed: 0.2s;
+    }
+
+    /* -------------------------------------------------------------
+       2. E-Ink / High-Contrast Monochrome Mode
+       ------------------------------------------------------------- */
+    body.eink-mode {
+      --bg-color: #ffffff !important;
+      --card-bg: #ffffff !important;
+      --card-border: #000000 !important;
+      --text-main: #000000 !important;
+      --text-muted: #222222 !important;
+      --accent: #000000 !important;
+      --accent-hover: #000000 !important;
+      --state-on: #000000 !important;
+      --state-off: #ffffff !important;
+      --state-on-glow: none !important;
+      --transition-speed: 0s !important;
+    }
+
+    body.eink-mode * {
+      animation: none !important;
+      transition: none !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+
+    body.eink-mode .card {
+      border: 2px solid #000000 !important;
+      border-radius: 0px !important;
+    }
+
+    body.eink-mode .badge-on {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+      border: 1px solid #000000 !important;
+    }
+
+    body.eink-mode .badge-off {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      border: 1px solid #000000 !important;
+    }
+
+    body.eink-mode .btn {
+      border: 2px solid #000000 !important;
+      border-radius: 0px !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-weight: bold !important;
+    }
+
+    /* -------------------------------------------------------------
+       3. General Styles
+       ------------------------------------------------------------- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .badge-btn:hover {
+      color: var(--text-main);
+      border-color: var(--text-main);
+    }
+
+    /* -------------------------------------------------------------
+       4. Card Grid Layout
+       ------------------------------------------------------------- */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      user-select: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      min-height: 140px;
+      transition: transform var(--transition-speed), border-color var(--transition-speed);
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .card:active {
+      transform: translateY(0);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .card-type {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .badge-on {
+      color: var(--state-on);
+      background: rgba(34, 197, 94, 0.15);
+      box-shadow: 0 0 10px var(--state-on-glow);
+    }
+
+    .badge-off {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .badge-sensor {
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    /* -------------------------------------------------------------
+       5. Debounce & Loading States (Anti-Spam Click)
+       ------------------------------------------------------------- */
+    .card.loading {
+      pointer-events: none !important;
+      opacity: 0.65;
+    }
+
+    .card.loading::after {
+      content: "處理中...";
+      position: absolute;
+      inset: 0;
+      background: rgba(11, 15, 25, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    body.eink-mode .card.loading::after {
+      background: rgba(255, 255, 255, 0.9) !important;
+      color: #000000 !important;
+      border: 2px dashed #000000 !important;
+    }
+
+    /* -------------------------------------------------------------
+       6. Login Overlay
+       ------------------------------------------------------------- */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 16px;
+    }
+
+    .login-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 28px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .login-box h2 {
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 1.3rem;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    body.eink-mode .form-input {
+      background: #ffffff !important;
+      border: 2px solid #000000 !important;
+      color: #000000 !important;
+      border-radius: 0 !important;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #0b0f19;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+    }
+
+    body.eink-mode .error-msg {
+      color: #000000 !important;
+      font-weight: bold;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login Modal -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-box">
+      <h2>登入控制台</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">帳號</label>
+          <input type="text" id="username" class="form-input" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">密碼</label>
+          <input type="password" id="password" class="form-input" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn" id="login-btn">登入</button>
+        <div id="login-error" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+        <line x1="6" y1="6" x2="6.01" y2="6"></line>
+        <line x1="6" y1="18" x2="6.01" y2="18"></line>
+      </svg>
+      <h1>MQTT Switchboard</h1>
+    </div>
+    <div class="header-actions">
+      <button class="badge-btn" id="toggle-eink" onclick="toggleEinkMode()">[E-Ink]</button>
+      <button class="badge-btn" onclick="logout()">登出</button>
+    </div>
+  </header>
+
+  <!-- Device Grid -->
+  <main class="grid-container" id="device-grid">
+    <div class="empty-state">正在尋找設備 (等待 HA Discovery 或靜態配置)...</div>
+  </main>
+
+  <script>
+    let devices = {};
+    let isEink = false;
+
+    // Detect E-Ink from URL query e.g. ?eink=1
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('eink') === '1') {
+      enableEink(true);
+    }
+
+    function toggleEinkMode() {
+      enableEink(!isEink);
+    }
+
+    function enableEink(val) {
+      isEink = val;
+      if (isEink) {
+        document.body.classList.add('eink-mode');
+        document.getElementById('toggle-eink').innerText = '[色彩模式]';
+      } else {
+        document.body.classList.remove('eink-mode');
+        document.getElementById('toggle-eink').innerText = '[E-Ink]';
+      }
+    }
+
+    // 1. Session Check & Login Handling
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+          document.getElementById('login-overlay').style.display = 'none';
+          initDashboard();
+        } else {
+          document.getElementById('login-overlay').style.display = 'flex';
+        }
+      } catch (err) {
+        document.getElementById('login-overlay').style.display = 'flex';
+      }
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        if (res.ok) {
+          document.getElementById('login-overlay').style.display = 'none';
+          initDashboard();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          errEl.innerText = data.error || '帳號或密碼錯誤';
+          errEl.style.display = 'block';
+        }
+      } catch (err) {
+        errEl.innerText = '網路連線失敗';
+        errEl.style.display = 'block';
+      }
+    });
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.reload();
+    }
+
+    // 2. Fetch Devices & Realtime Event Setup
+    async function initDashboard() {
+      await loadDevices();
+      startSSE();
+    }
+
+    async function loadDevices() {
+      try {
+        const res = await fetch('/api/devices');
+        if (res.ok) {
+          const list = await res.json();
+          devices = {};
+          list.forEach(d => devices[d.id] = d);
+          render();
+        }
+      } catch (err) {
+        console.error('Fetch devices failed:', err);
+      }
+    }
+
+    function startSSE() {
+      const sse = new EventSource('/api/events');
+      sse.addEventListener('device', (e) => {
+        try {
+          const dev = JSON.parse(e.data);
+          devices[dev.id] = dev;
+          render();
+        } catch (err) {}
+      });
+      sse.onerror = () => {
+        // Fallback polling every 4 seconds if SSE disconnects
+        setTimeout(loadDevices, 4000);
+      };
+    }
+
+    // 3. Render Cards
+    function render() {
+      const grid = document.getElementById('device-grid');
+      const keys = Object.keys(devices);
+      if (keys.length === 0) {
+        grid.innerHTML = '<div class="empty-state">尚無設備上線。<br>正在監聽 homeassistant/# 與靜態配置...</div>';
+        return;
+      }
+
+      grid.innerHTML = '';
+      keys.sort().forEach(id => {
+        const dev = devices[id];
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${dev.id}`;
+
+        let badgeClass = 'badge-off';
+        let statusText = dev.state || 'OFF';
+
+        if (dev.component === 'sensor') {
+          badgeClass = 'badge-sensor';
+          statusText = dev.unit ? `${dev.state} ${dev.unit}` : dev.state;
+        } else if (dev.state === 'ON' || dev.state === dev.payload_on) {
+          badgeClass = 'badge-on';
+          statusText = 'ON';
+        }
+
+        card.innerHTML = `
+          <div class="card-header">
+            <div>
+              <div class="card-title">${escapeHTML(dev.name)}</div>
+              <div class="card-type">${escapeHTML(dev.component)}</div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <span class="status-indicator ${badgeClass}">
+              <span class="dot"></span>
+              <span>${escapeHTML(statusText)}</span>
+            </span>
+          </div>
+        `;
+
+        // Click Handler (with 1s frontend debounce)
+        if (dev.component === 'switch' || dev.component === 'light' || dev.component === 'button') {
+          card.onclick = () => handleAction(dev.id);
+        } else {
+          card.style.cursor = 'default';
+        }
+
+        grid.appendChild(card);
+      });
+    }
+
+    // 4. Trigger Action with 1-Second Lock
+    async function handleAction(id) {
+      const card = document.getElementById(`card-${id}`);
+      if (!card || card.classList.contains('loading')) return;
+
+      // Lock card for 1 second immediately
+      card.classList.add('loading');
+      setTimeout(() => {
+        card.classList.remove('loading');
+      }, 1000);
+
+      try {
+        const res = await fetch(`/api/devices/${encodeURIComponent(id)}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (!res.ok && res.status === 429) {
+          console.warn('Backend debounce active');
+        }
+      } catch (err) {
+        console.error('Trigger device failed:', err);
+      }
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    // Run check on startup
+    checkAuth();
+  </script>
+</body>
+</html>
