@@ -77,6 +77,10 @@ func getString(m map[string]interface{}, keys ...string) string {
 				}
 			}
 		}
+	}
+	return ""
+}
+
 func extractJSONKey(tpl string) string {
 	tpl = strings.TrimSpace(tpl)
 	if strings.Contains(tpl, "value_json.") {

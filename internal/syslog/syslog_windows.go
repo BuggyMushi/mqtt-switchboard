@@ -28,6 +28,10 @@ func (l *winLogger) DeviceError(device, reason string) {
 	fmt.Fprintf(os.Stderr, "[%s:DEVICE_ERROR] %s\n", l.tag, formatDeviceError(device, reason))
 }
 
+func (l *winLogger) Debug(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, "[%s:DEBUG] "+format+"\n", append([]interface{}{l.tag}, v...)...)
+}
+
 func (l *winLogger) Info(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, "[%s:INFO] "+format+"\n", append([]interface{}{l.tag}, v...)...)
 }

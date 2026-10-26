@@ -9,6 +9,7 @@ type Logger interface {
 	Action(user, device, cmd, ip string)
 	AuthFail(user, ip, reason string)
 	DeviceError(device, reason string)
+	Debug(format string, v ...interface{})
 	Info(format string, v ...interface{})
 	Warn(format string, v ...interface{})
 	Error(format string, v ...interface{})

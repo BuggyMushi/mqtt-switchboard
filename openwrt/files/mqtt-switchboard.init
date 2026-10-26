@@ -12,7 +12,7 @@ init_config() {
 	config_load "mqtt-switchboard"
 
 	config_get_bool enabled "main" "enabled" 1
-	config_get listen_addr "main" "listen_addr" "127.0.0.1"
+	config_get listen_addr "main" "listen_addr" "0.0.0.0"
 	config_get listen_port "main" "listen_port" "8080"
 	config_get broker_url "main" "broker_url" "tcp://127.0.0.1:1883"
 	config_get broker_client_id "main" "broker_client_id" "mqtt_switchboard_wrt"
