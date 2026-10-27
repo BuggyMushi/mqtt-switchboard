@@ -87,3 +87,31 @@ func TestGetRealIP(t *testing.T) {
 		t.Fatalf("expected 192.168.1.50, got %s", ip)
 	}
 }
+
+func TestIsPrivateOrLocalIP(t *testing.T) {
+	cases := []struct {
+		ip       string
+		expected bool
+	}{
+		{"127.0.0.1", true},
+		{"::1", true},
+		{"192.168.1.1", true},
+		{"10.0.0.1", true},
+		{"172.16.0.1", true},
+		{"172.31.255.255", true},
+		{"169.254.1.1", true},
+		{"fe80::1", true},
+		{"8.8.8.8", false},
+		{"1.1.1.1", false},
+		{"203.0.113.195", false},
+		{"invalid-ip", false},
+		{"", false},
+	}
+
+	for _, tc := range cases {
+		if got := IsPrivateOrLocalIP(tc.ip); got != tc.expected {
+			t.Errorf("IsPrivateOrLocalIP(%q) = %v; expected %v", tc.ip, got, tc.expected)
+		}
+	}
+}
+

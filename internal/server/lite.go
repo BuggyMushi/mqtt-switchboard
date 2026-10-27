@@ -11,7 +11,23 @@ import (
 	"github.com/your-repo/mqtt-switchboard/internal/discovery"
 )
 
+func (s *Server) checkLiteAccess(w http.ResponseWriter, r *http.Request) bool {
+	clientIP := auth.GetRealIP(r)
+	if !auth.IsPrivateOrLocalIP(clientIP) {
+		s.logger.Warn("[Security:Lite] Blocked non-local access attempt to /lite from WAN IP: %s", clientIP)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("403 Forbidden: /lite is strictly restricted to Local Area Network (LAN) devices for legacy device security.\n"))
+		return false
+	}
+	return true
+}
+
 func (s *Server) handleLite(w http.ResponseWriter, r *http.Request) {
+	if !s.checkLiteAccess(w, r) {
+		return
+	}
+
 	cookie, err := r.Cookie(sessionCookieName)
 	var username string
 	if err == nil && cookie.Value != "" {
@@ -29,6 +45,10 @@ func (s *Server) handleLite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLiteLogin(w http.ResponseWriter, r *http.Request) {
+	if !s.checkLiteAccess(w, r) {
+		return
+	}
+
 	clientIP := auth.GetRealIP(r)
 
 	if locked, _ := s.authMgr.IsIPLocked(clientIP); locked {
@@ -79,6 +99,10 @@ func (s *Server) handleLiteLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLiteLogout(w http.ResponseWriter, r *http.Request) {
+	if !s.checkLiteAccess(w, r) {
+		return
+	}
+
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		s.authMgr.RevokeSession(cookie.Value)
 	}
@@ -95,6 +119,10 @@ func (s *Server) handleLiteLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLiteAction(w http.ResponseWriter, r *http.Request) {
+	if !s.checkLiteAccess(w, r) {
+		return
+	}
+
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil || cookie.Value == "" {
 		http.Redirect(w, r, "/lite", http.StatusSeeOther)

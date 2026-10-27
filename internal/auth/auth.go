@@ -241,3 +241,14 @@ func GetRealIP(r *http.Request) string {
 	}
 	return r.RemoteAddr
 }
+
+// IsPrivateOrLocalIP returns true if the IP is private (RFC 1918, RFC 4193),
+// loopback (127.0.0.1, ::1), or link-local (169.254.x.x, fe80::).
+func IsPrivateOrLocalIP(ipStr string) bool {
+	ip := net.ParseIP(strings.TrimSpace(ipStr))
+	if ip == nil {
+		return false
+	}
+	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast()
+}
+
