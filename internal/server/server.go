@@ -80,6 +80,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/layout", s.requireAuth(s.handleSaveLayout))
 	mux.HandleFunc("GET /api/events", s.requireAuth(s.handleSSE))
 
+	// Kindle & Legacy E-Ink Server-Side Rendered Endpoints
+	mux.HandleFunc("GET /lite", s.handleLite)
+	mux.HandleFunc("POST /lite/login", s.handleLiteLogin)
+	mux.HandleFunc("POST /lite/action", s.handleLiteAction)
+	mux.HandleFunc("GET /lite/logout", s.handleLiteLogout)
+
 	// Embedded Web UI
 	mux.HandleFunc("GET /", s.handleWeb)
 }

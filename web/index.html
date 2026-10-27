@@ -616,6 +616,9 @@
         <button type="submit" class="btn" id="login-btn">登入</button>
         <div id="login-error" class="error-msg"></div>
       </form>
+      <div style="margin-top: 16px; text-align: center; font-size: 0.85rem;">
+        <a href="/lite" style="color: var(--text-muted); text-decoration: underline;">老舊 Kindle / E-Ink 極簡版 點此登入</a>
+      </div>
     </div>
   </div>
 
@@ -639,6 +642,7 @@
       </div>
       <button class="badge-btn" id="view-mode-btn" onclick="toggleViewMode()" title="切換簡易面板或詳細診斷模式">[模式: 簡易]</button>
       <button class="badge-btn" id="order-mode-btn" onclick="toggleOrderMode()">[排序]</button>
+      <a href="/lite" class="badge-btn" style="text-decoration:none; color:inherit;" title="專為老舊 Kindle / 電子紙閱讀器設計的純伺服器渲染極簡版">[Kindle版]</a>
       <button class="badge-btn" id="toggle-eink" onclick="toggleEinkMode()">[E-Ink]</button>
       <button class="badge-btn" onclick="logout()">登出</button>
     </div>
