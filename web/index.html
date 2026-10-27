@@ -232,6 +232,48 @@
     /* -------------------------------------------------------------
        5. Multi-Entity Channel Grid (e.g. 8CH Relays in One Card)
        ------------------------------------------------------------- */
+    /* -------------------------------------------------------------
+       5. Multi-Entity Channel Grid (Controls & Sensors)
+       ------------------------------------------------------------- */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .metric-chip {
+      background: var(--item-bg);
+      border: 1px solid var(--item-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 48px;
+      position: relative;
+    }
+
+    .metric-chip .metric-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+    }
+
+    .metric-chip .metric-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 2px;
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .entity-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
@@ -656,8 +698,37 @@
       const id = (ent.id || '').toLowerCase();
       const name = (ent.name || '').toLowerCase();
       const key = (ent.json_key || '').toLowerCase();
-      const diagKeywords = ['rssi', 'wifi', 'ssid', 'heap', 'uptime', 'ip', 'mac', 'prefix', 'phy', 'sensor_type', 'last_roll'];
+      const diagKeywords = [
+        'rssi', 'wifi', 'ssid', 'heap', 'uptime', 'ip', 'mac', 'prefix',
+        'phy', 'sensor_type', 'last_roll', 'version', 'firmware', 'sw_ver', 'sw_version'
+      ];
       return diagKeywords.some(kw => id.includes(kw) || name.includes(kw) || key === kw);
+    }
+
+    function cleanEntityName(fullName, groupName, groupArea) {
+      let s = (fullName || '').trim();
+      const prefixes = [];
+      if (groupArea && groupName) {
+        prefixes.push(`${groupArea} ${groupName} `);
+        prefixes.push(`${groupArea}_${groupName}_`);
+        prefixes.push(`${groupArea} ${groupName}_`);
+        prefixes.push(`${groupArea}_${groupName} `);
+      }
+      if (groupName) {
+        prefixes.push(`${groupName} `);
+        prefixes.push(`${groupName}_`);
+      }
+      if (groupArea) {
+        prefixes.push(`${groupArea} `);
+        prefixes.push(`${groupArea}_`);
+      }
+      for (const p of prefixes) {
+        if (s.toLowerCase().startsWith(p.toLowerCase())) {
+          s = s.substring(p.length).trim();
+          break;
+        }
+      }
+      return s || fullName;
     }
 
     // Detect E-Ink from URL query e.g. ?eink=1
@@ -911,6 +982,7 @@
             model: ent.device_model || '',
             manufacturer: ent.manufacturer || '',
             firmware: ent.firmware || '',
+            area: ent.device_area || '',
             entities: []
           };
         }
@@ -919,6 +991,7 @@
         if (!deviceGroups[devID].manufacturer && ent.manufacturer) deviceGroups[devID].manufacturer = ent.manufacturer;
         if (!deviceGroups[devID].firmware && ent.firmware) deviceGroups[devID].firmware = ent.firmware;
         if (!deviceGroups[devID].model && ent.device_model) deviceGroups[devID].model = ent.device_model;
+        if (!deviceGroups[devID].area && ent.device_area) deviceGroups[devID].area = ent.device_area;
       });
 
       // Synchronize and filter order: handle disappeared devices & new additions
@@ -960,12 +1033,25 @@
           }
         });
 
+        // 3. Sub-partition Core Entities into Metrics (Sensors) vs Controls (Switches/Buttons/Covers)
+        const metricEntities = [];
+        const controlEntities = [];
+        coreEntities.forEach(ent => {
+          if (ent.component === 'sensor' || ent.component === 'binary_sensor') {
+            metricEntities.push(ent);
+          } else {
+            controlEntities.push(ent);
+          }
+        });
+
         // Construct Telemetry Badge: [ Brand · Model · vFW ]
         let metaParts = [];
         if (group.manufacturer) metaParts.push(group.manufacturer);
         if (group.model) metaParts.push(group.model);
         if (group.firmware) metaParts.push(`v${group.firmware}`);
         const metaText = metaParts.join(' · ');
+
+        const subtitle = group.area ? `${escapeHTML(group.area)} · ${escapeHTML(group.id)}` : escapeHTML(group.id);
 
         let cardHTML = `
           <!-- Order Adjust Bar (Visible only in Order Mode) -->
@@ -977,92 +1063,97 @@
           <div class="device-header">
             <div>
               <div class="device-title">${escapeHTML(group.name)}</div>
-              <div class="device-subtitle">${escapeHTML(group.id)}</div>
+              <div class="device-subtitle">${subtitle}</div>
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
               ${(isDetailedMode && rssiStr) ? `<span class="rssi-pill" title="WiFi 訊號強度">📶 ${escapeHTML(rssiStr)}</span>` : ''}
               ${metaText ? `<div class="device-meta-pill" title="廠商: ${escapeHTML(group.manufacturer || 'N/A')}, 韌體: ${escapeHTML(group.firmware || 'N/A')}">${escapeHTML(metaText)}</div>` : ''}
             </div>
           </div>
-          <div class="entity-list">
         `;
 
-        // Render Core Entities (or all non-diag)
-        coreEntities.forEach(ent => {
-          const isHidden = hiddenEntities.includes(ent.id);
-          // In Simple Mode: completely skip hidden entities
-          if (isHidden && !isOrderMode) return;
+        // Render Metric Grid (Sensors e.g. Temp, Hum, Day, Cycle, Mode)
+        if (metricEntities.length > 0) {
+          cardHTML += `<div class="metric-grid">`;
+          metricEntities.forEach(ent => {
+            const isHidden = hiddenEntities.includes(ent.id);
+            if (isHidden && !isOrderMode) return;
 
-          const isSwitch = (ent.component === 'switch' || ent.component === 'light');
-          const isButton = (ent.component === 'button');
-          const isCover = (ent.component === 'cover');
-          const isSensor = (ent.component === 'sensor' || ent.component === 'binary_sensor');
-          const isOn = (ent.state === 'ON' || ent.state === ent.payload_on);
-
-          let itemClass = 'entity-item';
-          if (isOn && isSwitch) itemClass += ' entity-on';
-          if (isSensor) itemClass += ' is-sensor';
-          if (isCover) itemClass += ' is-cover';
-          if (isHidden) itemClass += ' is-hidden';
-
-          // Clean display name
-          let shortName = ent.name;
-          if (shortName.startsWith(group.name + "_")) {
-            shortName = shortName.substring(group.name.length + 1);
-          } else if (shortName.startsWith(group.name + " ")) {
-            shortName = shortName.substring(group.name.length + 1);
-          }
-
-          const hideBtnHTML = isOrderMode ? 
-            `<button class="entity-hide-btn" onclick="toggleHideEntity('${ent.id}', event)" title="${isHidden ? '點擊解除隱藏' : '點擊隱藏此項'}">${isHidden ? '[👁️ 顯示]' : '[✕ 隱藏]'}</button>` : '';
-
-          if (isCover) {
-            cardHTML += `
-              <div class="${itemClass}" id="entity-${ent.id}">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div class="entity-name">${escapeHTML(shortName)}</div>
-                  ${hideBtnHTML}
-                </div>
-                <div class="cover-actions">
-                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'OPEN')">▲ 開</button>
-                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'STOP')">■ 停</button>
-                  <button class="cover-btn" onclick="handleAction('${ent.id}', 'CLOSE')">▼ 關</button>
-                </div>
-              </div>
-            `;
-          } else if (isSensor) {
+            const shortName = cleanEntityName(ent.name, group.name, group.area);
             let displayVal = ent.state || 'N/A';
             if (ent.unit) displayVal += ` ${ent.unit}`;
-            cardHTML += `
-              <div class="${itemClass}" id="entity-${ent.id}">
-                <span class="entity-name">${escapeHTML(shortName)}</span>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <span style="font-weight:700; color:var(--accent);">${escapeHTML(displayVal)}</span>
-                  ${hideBtnHTML}
-                </div>
-              </div>
-            `;
-          } else {
-            // Switch, Light, Button
-            let statusText = ent.state || 'OFF';
-            if (isButton) statusText = '觸發';
+            const hideBtnHTML = isOrderMode ? 
+              `<button class="entity-hide-btn" onclick="toggleHideEntity('${ent.id}', event)" title="${isHidden ? '點擊解除隱藏' : '點擊隱藏此項'}">${isHidden ? '[👁️ 顯示]' : '[✕ 隱藏]'}</button>` : '';
 
             cardHTML += `
-              <div class="${itemClass}" id="entity-${ent.id}" onclick="handleAction('${ent.id}')">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                  <div class="entity-name">${escapeHTML(shortName)}</div>
+              <div class="metric-chip ${isHidden ? 'is-hidden' : ''}" id="entity-${ent.id}">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="metric-label" title="${escapeHTML(ent.name)}">${escapeHTML(shortName)}</span>
                   ${hideBtnHTML}
                 </div>
-                <div class="entity-state">
-                  <span>${escapeHTML(statusText)}</span>
-                  ${isSwitch ? '<span class="state-dot"></span>' : ''}
-                </div>
+                <span class="metric-value">${escapeHTML(displayVal)}</span>
               </div>
             `;
-          }
-        });
+          });
+          cardHTML += `</div>`;
+        }
 
-        cardHTML += `</div>`; // end entity-list
+        // Render Control Grid (Switches, Lights, Buttons, Covers)
+        if (controlEntities.length > 0) {
+          cardHTML += `<div class="entity-list">`;
+          controlEntities.forEach(ent => {
+            const isHidden = hiddenEntities.includes(ent.id);
+            if (isHidden && !isOrderMode) return;
+
+            const isSwitch = (ent.component === 'switch' || ent.component === 'light');
+            const isButton = (ent.component === 'button');
+            const isCover = (ent.component === 'cover');
+            const isOn = (ent.state === 'ON' || ent.state === ent.payload_on);
+
+            let itemClass = 'entity-item';
+            if (isOn && isSwitch) itemClass += ' entity-on';
+            if (isCover) itemClass += ' is-cover';
+            if (isHidden) itemClass += ' is-hidden';
+
+            const shortName = cleanEntityName(ent.name, group.name, group.area);
+            const hideBtnHTML = isOrderMode ? 
+              `<button class="entity-hide-btn" onclick="toggleHideEntity('${ent.id}', event)" title="${isHidden ? '點擊解除隱藏' : '點擊隱藏此項'}">${isHidden ? '[👁️ 顯示]' : '[✕ 隱藏]'}</button>` : '';
+
+            if (isCover) {
+              cardHTML += `
+                <div class="${itemClass}" id="entity-${ent.id}">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="entity-name">${escapeHTML(shortName)}</div>
+                    ${hideBtnHTML}
+                  </div>
+                  <div class="cover-actions">
+                    <button class="cover-btn" onclick="handleAction('${ent.id}', 'OPEN')">▲ 開</button>
+                    <button class="cover-btn" onclick="handleAction('${ent.id}', 'STOP')">■ 停</button>
+                    <button class="cover-btn" onclick="handleAction('${ent.id}', 'CLOSE')">▼ 關</button>
+                  </div>
+                </div>
+              `;
+            } else {
+              // Switch, Light, Button
+              let statusText = ent.state || 'OFF';
+              if (isButton) statusText = '觸發';
+
+              cardHTML += `
+                <div class="${itemClass}" id="entity-${ent.id}" onclick="handleAction('${ent.id}')">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div class="entity-name">${escapeHTML(shortName)}</div>
+                    ${hideBtnHTML}
+                  </div>
+                  <div class="entity-state">
+                    <span>${escapeHTML(statusText)}</span>
+                    ${isSwitch ? '<span class="state-dot"></span>' : ''}
+                  </div>
+                </div>
+              `;
+            }
+          });
+          cardHTML += `</div>`; // end entity-list
+        }
 
         // If in Detailed Mode, render Diagnostic Drawer at bottom
         if (isDetailedMode && diagEntities.length > 0) {
@@ -1075,12 +1166,7 @@
             const isHidden = hiddenEntities.includes(ent.id);
             if (isHidden && !isOrderMode) return;
 
-            let shortName = ent.name;
-            if (shortName.startsWith(group.name + "_")) {
-              shortName = shortName.substring(group.name.length + 1);
-            } else if (shortName.startsWith(group.name + " ")) {
-              shortName = shortName.substring(group.name.length + 1);
-            }
+            const shortName = cleanEntityName(ent.name, group.name, group.area);
             let displayVal = ent.state || 'N/A';
             if (ent.unit) displayVal += ` ${ent.unit}`;
 

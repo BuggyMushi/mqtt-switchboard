@@ -27,6 +27,7 @@ type DeviceEntity struct {
 	DeviceModel       string    `json:"device_model"`       // Hardware model
 	Manufacturer      string    `json:"manufacturer"`       // Vendor / Manufacturer e.g. Mushi, Tuya
 	Firmware          string    `json:"firmware"`           // Device firmware version e.g. 2.4.0-2.0.0
+	DeviceArea        string    `json:"device_area,omitempty"` // Suggested Area / Zone e.g. Chickenhouse
 	LastUpdated       time.Time `json:"last_updated"`
 	Source            string    `json:"source"`             // "discovery" or "static"
 }
@@ -155,6 +156,7 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	deviceModel := ""
 	deviceManufacturer := ""
 	deviceFirmware := ""
+	deviceArea := ""
 
 	var devObj map[string]interface{}
 	if devRaw, ok := raw["dev"]; ok {
@@ -172,6 +174,7 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 		deviceModel = getString(devObj, "mdl", "model")
 		deviceManufacturer = getString(devObj, "mf", "manufacturer")
 		deviceFirmware = getString(devObj, "sw", "sw_version")
+		deviceArea = getString(devObj, "sa", "suggested_area", "area", "zone")
 
 		// Extract IDs
 		if idsRaw, ok := devObj["ids"]; ok {
@@ -230,6 +233,7 @@ func (r *Registry) HandleDiscoveryMessage(prefix, topic string, payload []byte) 
 	entity.DeviceModel = deviceModel
 	entity.Manufacturer = deviceManufacturer
 	entity.Firmware = deviceFirmware
+	entity.DeviceArea = deviceArea
 
 	isNewTopic := false
 	if stateTopic != "" {
