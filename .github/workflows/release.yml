@@ -1,4 +1,4 @@
-name: Release Multi-Arch Binaries
+name: Release Multi-Format Packages (.ipk, .apk, .deb, .tar.gz)
 
 on:
   push:
@@ -11,27 +11,47 @@ permissions:
 
 jobs:
   build:
-    name: Build Multi-Arch Static Binaries
+    name: Build Packages (${{ matrix.name_suffix }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: linux
             arch: amd64
             extra_env: ""
-            name_suffix: linux-amd64
+            name_suffix: amd64
+            opkg_arch: x86_64
+            apk_arch: x86_64
+            deb_arch: amd64
           - os: linux
             arch: arm64
             extra_env: ""
-            name_suffix: linux-arm64
+            name_suffix: arm64
+            opkg_arch: aarch64_cortex-a53
+            apk_arch: aarch64
+            deb_arch: arm64
           - os: linux
             arch: arm
             extra_env: "GOARM=7"
-            name_suffix: linux-armv7
+            name_suffix: armv7
+            opkg_arch: arm_cortex-a7_neon-vfpv4
+            apk_arch: armv7
+            deb_arch: armhf
           - os: linux
             arch: mipsle
             extra_env: "GOMIPS=softfloat"
-            name_suffix: linux-mipsle
+            name_suffix: mipsle
+            opkg_arch: mipsel_24kc
+            apk_arch: mipsle
+            deb_arch: ""
+          - os: linux
+            arch: mips
+            extra_env: "GOMIPS=softfloat"
+            name_suffix: mips
+            opkg_arch: mips_24kc
+            apk_arch: mips
+            deb_arch: ""
 
     steps:
       - name: Checkout Code
@@ -43,9 +63,9 @@ jobs:
           go-version: '1.22'
           check-latest: true
 
-      - name: Build Binary
+      - name: Build and Package Multi-Format Distributions
         run: |
-          mkdir -p dist
+          mkdir -p dist build/bin
           export CGO_ENABLED=0
           export GOOS=${{ matrix.os }}
           export GOARCH=${{ matrix.arch }}
@@ -53,21 +73,182 @@ jobs:
             export ${{ matrix.extra_env }}
           fi
           go mod tidy
-          APP_VER="${{ github.ref_name }}"
-          if [ "${{ github.ref_type }}" != "tag" ]; then
-            APP_VER="1.0.0-${{ github.ref_name }}-$(git rev-parse --short HEAD)"
-          fi
-          go build -trimpath -ldflags="-s -w -X main.version=${APP_VER}" \
-            -o dist/mqtt-switchboard-${{ matrix.name_suffix }} ./cmd/mqtt-switchboard
 
-      - name: Upload Build Artifact
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}"
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            VERSION="1.0.0-${{ github.ref_name }}-$(git rev-parse --short HEAD)"
+          fi
+          echo "Packaging mqtt-switchboard version: ${VERSION}"
+
+          BIN_PATH="build/bin/mqtt-switchboard"
+          go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" \
+            -o "${BIN_PATH}" ./cmd/mqtt-switchboard
+
+          # -------------------------------------------------------------
+          # 1. Standalone Tarball (Binary + sample config + systemd unit)
+          # -------------------------------------------------------------
+          mkdir -p build/tarball
+          cp "${BIN_PATH}" build/tarball/
+          cp openwrt/files/config.json build/tarball/config.example.json
+          cat << 'EOF' > build/tarball/mqtt-switchboard.service
+[Unit]
+Description=MQTT Switchboard Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/mqtt-switchboard -config /etc/mqtt-switchboard/config.json
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+          tar -czf "dist/mqtt-switchboard_${VERSION}_linux_${{ matrix.name_suffix }}.tar.gz" -C build/tarball .
+
+          # -------------------------------------------------------------
+          # 2. OpenWrt .ipk (OpenWrt 21.02 ~ 24.10)
+          # -------------------------------------------------------------
+          mkdir -p build/ipk_data/usr/bin
+          mkdir -p build/ipk_data/etc/init.d
+          mkdir -p build/ipk_data/etc/config
+          mkdir -p build/ipk_data/etc/mqtt-switchboard
+          mkdir -p build/ipk_control
+
+          cp "${BIN_PATH}" build/ipk_data/usr/bin/mqtt-switchboard
+          cp openwrt/files/mqtt-switchboard.init build/ipk_data/etc/init.d/mqtt-switchboard
+          cp openwrt/files/mqtt-switchboard.config build/ipk_data/etc/config/mqtt-switchboard
+          cp openwrt/files/config.json build/ipk_data/etc/mqtt-switchboard/config.json
+
+          chmod 755 build/ipk_data/usr/bin/mqtt-switchboard
+          chmod 755 build/ipk_data/etc/init.d/mqtt-switchboard
+          chmod 644 build/ipk_data/etc/config/mqtt-switchboard
+          chmod 644 build/ipk_data/etc/mqtt-switchboard/config.json
+
+          cat << EOF > build/ipk_control/control
+Package: mqtt-switchboard
+Version: ${VERSION}-1
+Depends: libc
+Section: net
+Architecture: ${{ matrix.opkg_arch }}
+Priority: optional
+Maintainer: OpenWrt Community Developer
+Description: Ultra-lightweight Web-to-MQTT switchboard with Home Assistant discovery and Kindle E-Ink support
+EOF
+
+          cat << 'EOF' > build/ipk_control/conffiles
+/etc/config/mqtt-switchboard
+/etc/mqtt-switchboard/config.json
+EOF
+
+          cat << 'EOF' > build/ipk_control/postinst
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+    /etc/init.d/mqtt-switchboard enable
+    /etc/init.d/mqtt-switchboard restart
+}
+exit 0
+EOF
+          chmod 755 build/ipk_control/postinst
+
+          cat << 'EOF' > build/ipk_control/prerm
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] || {
+    /etc/init.d/mqtt-switchboard stop
+    /etc/init.d/mqtt-switchboard disable
+}
+exit 0
+EOF
+          chmod 755 build/ipk_control/prerm
+
+          echo "2.0" > build/debian-binary
+          tar -czf build/control.tar.gz -C build/ipk_control .
+          tar -czf build/data.tar.gz -C build/ipk_data .
+          tar -czf "dist/mqtt-switchboard_${VERSION}-1_${{ matrix.opkg_arch }}.ipk" \
+              -C build debian-binary control.tar.gz data.tar.gz
+
+          # -------------------------------------------------------------
+          # 3. OpenWrt .apk (OpenWrt 25.12+ / Alpine)
+          # -------------------------------------------------------------
+          mkdir -p build/apk_tree
+          cp -r build/ipk_data/* build/apk_tree/
+          cat << EOF > build/apk_tree/.PKGINFO
+pkgname = mqtt-switchboard
+pkgver = ${VERSION}-r1
+pkgdesc = Ultra-lightweight Web-to-MQTT switchboard for OpenWrt
+url = https://github.com/${GITHUB_REPOSITORY:-BuggyMushi/mqtt-switchboard}
+builddate = $(date +%s)
+packager = OpenWrt Community Developer
+size = $(du -sb build/apk_tree | cut -f1)
+arch = ${{ matrix.apk_arch }}
+license = MIT
+depend = libc
+EOF
+          tar -czf "dist/mqtt-switchboard-${VERSION}-r1_${{ matrix.apk_arch }}.apk" -C build/apk_tree .
+
+          # -------------------------------------------------------------
+          # 4. Debian / Ubuntu .deb (Debian / Ubuntu / Raspberry Pi OS)
+          # -------------------------------------------------------------
+          if [ -n "${{ matrix.deb_arch }}" ]; then
+            mkdir -p build/deb_root/DEBIAN
+            mkdir -p build/deb_root/usr/bin
+            mkdir -p build/deb_root/etc/mqtt-switchboard
+            mkdir -p build/deb_root/etc/systemd/system
+
+            cp "${BIN_PATH}" build/deb_root/usr/bin/mqtt-switchboard
+            cp openwrt/files/config.json build/deb_root/etc/mqtt-switchboard/config.json
+            cp build/tarball/mqtt-switchboard.service build/deb_root/etc/systemd/system/
+
+            chmod 755 build/deb_root/usr/bin/mqtt-switchboard
+            chmod 644 build/deb_root/etc/mqtt-switchboard/config.json
+            chmod 644 build/deb_root/etc/systemd/system/mqtt-switchboard.service
+
+            cat << EOF > build/deb_root/DEBIAN/control
+Package: mqtt-switchboard
+Version: ${VERSION}
+Section: net
+Priority: optional
+Architecture: ${{ matrix.deb_arch }}
+Maintainer: Community Developer
+Description: Ultra-lightweight Web-to-MQTT switchboard with Home Assistant discovery and Kindle E-Ink support
+EOF
+
+            cat << 'EOF' > build/deb_root/DEBIAN/postinst
+#!/bin/sh
+set -e
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+    systemctl enable --now mqtt-switchboard || true
+fi
+exit 0
+EOF
+            chmod 755 build/deb_root/DEBIAN/postinst
+
+            cat << 'EOF' > build/deb_root/DEBIAN/prerm
+#!/bin/sh
+set -e
+if [ -d /run/systemd/system ]; then
+    systemctl stop mqtt-switchboard || true
+    systemctl disable mqtt-switchboard || true
+fi
+exit 0
+EOF
+            chmod 755 build/deb_root/DEBIAN/prerm
+
+            dpkg-deb --build build/deb_root "dist/mqtt-switchboard_${VERSION}_${{ matrix.deb_arch }}.deb"
+          fi
+
+          ls -lh dist/
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.name_suffix }}
-          path: dist/mqtt-switchboard-${{ matrix.name_suffix }}
+          name: packages-${{ matrix.name_suffix }}
+          path: dist/*
 
   release:
-    name: Publish Release
+    name: Publish Multi-Format Release
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
