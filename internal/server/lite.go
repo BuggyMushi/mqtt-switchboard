@@ -497,10 +497,14 @@ func (s *Server) renderLiteDashboard(w http.ResponseWriter, r *http.Request, act
 		latestFont := banner.LatestSize
 		if latestFont == "" {
 			latestFont = "28px"
+		} else if _, err := strconv.Atoi(latestFont); err == nil {
+			latestFont += "px"
 		}
 		histFont := banner.HistorySize
 		if histFont == "" {
 			histFont = "14px"
+		} else if _, err := strconv.Atoi(histFont); err == nil {
+			histFont += "px"
 		}
 		maxHist := banner.MaxHistory
 		if maxHist <= 0 || maxHist > 3 {
@@ -530,18 +534,33 @@ func (s *Server) renderLiteDashboard(w http.ResponseWriter, r *http.Request, act
 				textVal := extractBannerText(msg.Payload, banner.JSONKey)
 				timeTag := msg.Timestamp.Format("15:04:05")
 				if idx == 0 {
-					// Latest (#1) message: large configurable font size + HTML <font> fallback for noStyle
-					if stale {
-						b.WriteString(fmt.Sprintf(`<div class="banner-latest" style="font-size:%s;"><font size="5"><b><del><s>%s</s></del></b></font> <small>[%s /逾時/]</small></div>`,
-							html.EscapeString(latestFont), html.EscapeString(textVal), timeTag))
+					// Latest (#1) message: large configurable font size
+					if noStyle {
+						if stale {
+							b.WriteString(fmt.Sprintf(`<div class="banner-latest"><font size="5"><b><del><s>%s</s></del></b></font> <small>[%s /逾時/]</small></div>`,
+								html.EscapeString(textVal), timeTag))
+						} else {
+							b.WriteString(fmt.Sprintf(`<div class="banner-latest"><font size="5"><b>%s</b></font> <small>[%s]</small></div>`,
+								html.EscapeString(textVal), timeTag))
+						}
 					} else {
-						b.WriteString(fmt.Sprintf(`<div class="banner-latest" style="font-size:%s;"><font size="5"><b>%s</b></font> <small style="font-size:0.45em;font-weight:normal;">[%s]</small></div>`,
-							html.EscapeString(latestFont), html.EscapeString(textVal), timeTag))
+						if stale {
+							b.WriteString(fmt.Sprintf(`<div class="banner-latest" style="font-size:%s;line-height:1.2;"><b><del><s>%s</s></del></b> <small style="font-size:0.45em;font-weight:normal;">[%s /逾時/]</small></div>`,
+								html.EscapeString(latestFont), html.EscapeString(textVal), timeTag))
+						} else {
+							b.WriteString(fmt.Sprintf(`<div class="banner-latest" style="font-size:%s;line-height:1.2;"><b>%s</b> <small style="font-size:0.45em;font-weight:normal;">[%s]</small></div>`,
+								html.EscapeString(latestFont), html.EscapeString(textVal), timeTag))
+						}
 					}
 				} else {
 					// History (#2, #3) messages: compact configurable font size
-					b.WriteString(fmt.Sprintf(`<div class="banner-hist" style="font-size:%s;"><small>[%s] %s</small></div>`,
-						html.EscapeString(histFont), timeTag, html.EscapeString(textVal)))
+					if noStyle {
+						b.WriteString(fmt.Sprintf(`<div class="banner-hist"><small>[%s] %s</small></div>`,
+							timeTag, html.EscapeString(textVal)))
+					} else {
+						b.WriteString(fmt.Sprintf(`<div class="banner-hist" style="font-size:%s;"><small>[%s] %s</small></div>`,
+							html.EscapeString(histFont), timeTag, html.EscapeString(textVal)))
+					}
 				}
 			}
 		}
@@ -576,6 +595,15 @@ func (s *Server) renderLiteDashboard(w http.ResponseWriter, r *http.Request, act
 			colWidthPct := 100 / mCols
 			b.WriteString(fmt.Sprintf(`<table class="metric-table" width="100%%" border="%s" cellpadding="4" cellspacing="0"><tr>`,
 				boolToBorder(noStyle, "1", "0")))
+
+			valStyle := ""
+			if !noStyle && box.ValueSize != "" {
+				sz := box.ValueSize
+				if _, err := strconv.Atoi(sz); err == nil {
+					sz += "px"
+				}
+				valStyle = fmt.Sprintf(` style="font-size:%s;"`, html.EscapeString(sz))
+			}
 
 			for i, cell := range box.Metrics {
 				if i > 0 && i%mCols == 0 {
@@ -614,8 +642,8 @@ func (s *Server) renderLiteDashboard(w http.ResponseWriter, r *http.Request, act
 				b.WriteString(fmt.Sprintf(`
       <td class="%s" width="%d%%" align="center"%s>
         <span class="metric-lbl">%s%s</span>%s
-        <span class="metric-val"><b>%s</b></span>
-      </td>`, cellClass, colWidthPct, cellBgAttr, html.EscapeString(cell.Label), staleBadge, boolToBorder(noStyle, "<br>", ""), combinedHTML))
+        <span class="metric-val"%s><b>%s</b></span>
+      </td>`, cellClass, colWidthPct, cellBgAttr, html.EscapeString(cell.Label), staleBadge, boolToBorder(noStyle, "<br>", ""), valStyle, combinedHTML))
 			}
 
 			rem := len(box.Metrics) % mCols

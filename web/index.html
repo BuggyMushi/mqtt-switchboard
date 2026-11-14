@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -136,7 +137,8 @@
       cursor: pointer;
     }
 
-    .badge-btn:hover, .badge-btn.active {
+    .badge-btn:hover,
+    .badge-btn.active {
       color: var(--text-main);
       border-color: var(--accent);
     }
@@ -478,6 +480,7 @@
       border: 1px solid #000000 !important;
       color: #000000 !important;
     }
+
     body.eink-mode .diag-badge {
       background: #ffffff !important;
       border: 1px solid #000000 !important;
@@ -669,7 +672,8 @@
       margin-bottom: 8px;
     }
 
-    .studio-input, .studio-select {
+    .studio-input,
+    .studio-select {
       background: rgba(15, 23, 42, 0.9);
       border: 1px solid var(--card-border);
       color: var(--text-main);
@@ -707,6 +711,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <!-- Login Modal -->
@@ -751,8 +756,10 @@
       </div>
       <button class="badge-btn" id="view-mode-btn" onclick="toggleViewMode()" title="切換簡易面板或詳細診斷模式">[模式: 簡易]</button>
       <button class="badge-btn" id="order-mode-btn" onclick="toggleOrderMode()">[排序]</button>
-      <button class="badge-btn" onclick="openEinkStudio()" style="border-color: var(--accent); color: var(--accent);" title="在現代電腦上配置老舊 Kindle / E-Ink 專屬版面、廣播與組合方塊">[🛠️ E-Ink 版面配置器]</button>
-      <a href="/lite" class="badge-btn" style="text-decoration:none; color:inherit;" title="專為老舊 Kindle / 電子紙閱讀器設計的純伺服器渲染極簡版">[Kindle版 (/lite)]</a>
+      <button class="badge-btn" onclick="openEinkStudio()" style="border-color: var(--accent); color: var(--accent);"
+        title="在現代電腦上配置老舊 Kindle / E-Ink 專屬版面、廣播與組合方塊">[🛠️ E-Ink 版面配置器]</button>
+      <a href="/lite" class="badge-btn" style="text-decoration:none; color:inherit;"
+        title="專為老舊 Kindle / 電子紙閱讀器設計的純伺服器渲染極簡版">[Kindle版 (/lite)]</a>
       <button class="badge-btn" id="toggle-eink" onclick="toggleEinkMode()">[E-Ink]</button>
       <button class="badge-btn" onclick="logout()">登出</button>
     </div>
@@ -768,9 +775,11 @@
         </div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="badge-btn" onclick="addEggrollerTemplateBox()" title="快速插入智慧孵蛋機 (Eggroller) 範例監控大框">[🐣 插入孵蛋機範例框]</button>
+        <button class="badge-btn" onclick="addEggrollerTemplateBox()" title="快速插入智慧孵蛋機 (Eggroller) 範例監控大框">[🐣
+          插入孵蛋機範例框]</button>
         <button class="badge-btn" onclick="exportEinkJSON()">[📤 匯出/手改 JSON]</button>
-        <button class="badge-btn" style="background:var(--accent); color:#0b0f19; font-weight:700;" onclick="saveEinkStudioConfig()">[💾 儲存並發佈至 /lite]</button>
+        <button class="badge-btn" style="background:var(--accent); color:#0b0f19; font-weight:700;"
+          onclick="saveEinkStudioConfig()">[💾 儲存並發佈至 /lite]</button>
         <button class="badge-btn" onclick="closeEinkStudio()">[✕ 關閉]</button>
       </div>
     </div>
@@ -783,13 +792,17 @@
         <div class="studio-section">
           <h3>1. 全域 E-Ink 顯示與單頁防呆設定</h3>
           <div class="studio-row">
-            <label><input type="checkbox" id="st-allow-lan" onchange="syncStudioFromUI()"> 區網 (LAN) 免帳密直連 `/lite`</label>
-            <label><input type="checkbox" id="st-pure-nocss" onchange="syncStudioFromUI()"> 極限無 CSS 模式 (`&lt;table border="1"&gt;`)</label>
+            <label><input type="checkbox" id="st-allow-lan" onchange="syncStudioFromUI()"> 區網 (LAN) 免帳密直連
+              `/lite`</label>
+            <label><input type="checkbox" id="st-pure-nocss" onchange="syncStudioFromUI()"> 極限無 CSS 模式 (`&lt;table
+              border="1"&gt;`)</label>
             <label><input type="checkbox" id="st-show-unassigned" onchange="syncStudioFromUI()"> 底部自動列出未分組新設備</label>
           </div>
           <div class="studio-row">
-            <label>定時刷新(秒, 0=手動): <input type="number" id="st-refresh-sec" class="studio-input" style="width:70px;" min="0" max="3600" onchange="syncStudioFromUI()"></label>
-            <label>斷線/逾時斜線警告(分, 0=關): <input type="number" id="st-stale-min" class="studio-input" style="width:65px;" min="0" max="1440" onchange="syncStudioFromUI()"></label>
+            <label>定時刷新(秒, 0=手動): <input type="number" id="st-refresh-sec" class="studio-input" style="width:70px;"
+                min="0" max="3600" onchange="syncStudioFromUI()"></label>
+            <label>斷線/逾時斜線警告(分, 0=關): <input type="number" id="st-stale-min" class="studio-input" style="width:65px;"
+                min="0" max="1440" onchange="syncStudioFromUI()"></label>
             <label>單頁未分組物件上限(防翻頁):
               <select id="st-max-items" class="studio-select" onchange="syncStudioFromUI()">
                 <option value="15">15 件 (6吋小螢幕)</option>
@@ -801,7 +814,9 @@
           </div>
           <div class="studio-row">
             <label><input type="checkbox" id="st-night-rest" onchange="syncStudioFromUI()"> 啟用夜間休眠防烙印</label>
-            <label>休眠時段(時): <input type="number" id="st-night-start" class="studio-input" style="width:55px;" min="0" max="23" onchange="syncStudioFromUI()"> 點 ～ <input type="number" id="st-night-end" class="studio-input" style="width:55px;" min="0" max="23" onchange="syncStudioFromUI()"> 點</label>
+            <label>休眠時段(時): <input type="number" id="st-night-start" class="studio-input" style="width:55px;" min="0"
+                max="23" onchange="syncStudioFromUI()"> 點 ～ <input type="number" id="st-night-end" class="studio-input"
+                style="width:55px;" min="0" max="23" onchange="syncStudioFromUI()"> 點</label>
           </div>
         </div>
 
@@ -848,9 +863,93 @@
       <div class="studio-preview-pane">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span style="font-size:0.85rem; font-weight:700;">📖 即時 Kindle / E-Ink 渲染預覽</span>
-          <a href="/lite" target="_blank" class="badge-btn" style="text-decoration:none; font-size:0.75rem;">[↗ 新分頁開啟真實 /lite]</a>
+          <a href="/lite" target="_blank" class="badge-btn" style="text-decoration:none; font-size:0.75rem;">[↗ 新分頁開啟真實
+            /lite]</a>
         </div>
         <div id="st-live-preview" class="eink-paper-canvas"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datalist Presets for Font Sizes (Allows free text input OR dropdown selection) -->
+  <datalist id="dl-latest-sizes">
+    <option value="18px">18px (緊湊)</option>
+    <option value="20px">20px</option>
+    <option value="22px">22px</option>
+    <option value="24px">24px</option>
+    <option value="26px">26px</option>
+    <option value="28px">28px (預設)</option>
+    <option value="32px">32px (醒目)</option>
+    <option value="36px">36px (大字)</option>
+    <option value="40px">40px</option>
+    <option value="48px">48px (特大)</option>
+    <option value="56px">56px</option>
+    <option value="64px">64px</option>
+    <option value="72px">72px (超大看板)</option>
+    <option value="80px">80px (叫吃飯巨字)</option>
+  </datalist>
+
+  <datalist id="dl-history-sizes">
+    <option value="10px">10px (極密)</option>
+    <option value="11px">11px</option>
+    <option value="12px">12px</option>
+    <option value="13px">13px</option>
+    <option value="14px">14px (預設)</option>
+    <option value="15px">15px</option>
+    <option value="16px">16px (清晰)</option>
+    <option value="18px">18px</option>
+    <option value="20px">20px</option>
+    <option value="24px">24px</option>
+  </datalist>
+
+  <datalist id="dl-metric-sizes">
+    <option value="12px">12px (緊密小字)</option>
+    <option value="14px">14px (標準預設)</option>
+    <option value="16px">16px (清晰)</option>
+    <option value="18px">18px (加強)</option>
+    <option value="20px">20px (醒目)</option>
+    <option value="24px">24px (特大)</option>
+    <option value="28px">28px (超大數值)</option>
+  </datalist>
+
+  <!-- E-Ink JSON Export / Import Modal (Completely eliminates browser prompt truncation) -->
+  <div id="eink-json-modal" class="studio-overlay" style="z-index: 999; justify-content: center; align-items: center;">
+    <div
+      style="background: var(--card-bg); border: 2px solid var(--accent); border-radius: 12px; width: 92%; max-width: 880px; max-height: 90vh; display: flex; flex-direction: column; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.85);">
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 10px;">
+        <h3 style="margin: 0; font-size: 1.1rem; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+          <span>📋</span> 佈局配置 JSON (完整匯出 / 備份 / 外部手改貼回)
+        </h3>
+        <button class="badge-btn" onclick="closeEinkJSONModal()">[✕ 關閉]</button>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4;">
+        💡 提示：此視窗支援無上限長度編輯（徹底解決瀏覽器 prompt 彈窗截短字元問題）。您可以複製全部進行備份、直接手改數值、或從外部貼上 JSON 後點擊<b>「✔️ 套用至編輯器」</b>。
+      </div>
+
+      <textarea id="st-json-textarea" spellcheck="false"
+        style="flex: 1; min-height: 380px; width: 100%; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.82rem; background: #0f172a; color: #38bdf8; border: 1px solid var(--card-border); border-radius: 6px; padding: 10px; resize: vertical; box-sizing: border-box; tab-size: 2; line-height: 1.4;"></textarea>
+
+      <div id="st-json-feedback" style="min-height: 22px; margin-top: 6px; font-size: 0.82rem; font-weight: bold;">
+      </div>
+
+      <div
+        style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="badge-btn" onclick="copyEinkJSONText()">📋 複製全部</button>
+          <button class="badge-btn" onclick="formatEinkJSONText()">✨ 檢查語法 / 美化排版</button>
+          <button class="badge-btn" onclick="downloadEinkJSONFile()">💾 下載為 layout.json</button>
+          <label class="badge-btn" style="cursor: pointer; margin: 0;">
+            📂 載入 .json 檔案 <input type="file" id="st-json-file-input" accept=".json" style="display: none;"
+              onchange="loadEinkJSONFromFile(this)">
+          </label>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="badge-btn" onclick="closeEinkJSONModal()">取消</button>
+          <button class="badge-btn" style="background: var(--accent); color: #0b0f19; font-weight: 700;"
+            onclick="applyEinkJSONFromModal()">✔️ 套用至編輯器</button>
+        </div>
       </div>
     </div>
   </div>
@@ -868,7 +967,7 @@
     let hiddenEntities = [];
     try {
       hiddenEntities = JSON.parse(localStorage.getItem('switchboard_hidden_entities') || '[]');
-    } catch(e) { hiddenEntities = []; }
+    } catch (e) { hiddenEntities = []; }
 
     let globalOrder = [];
     let customOrder = []; // Active display order
@@ -1064,7 +1163,7 @@
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1110,7 +1209,7 @@
             globalOrder = data.order;
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     function getPresentGroupKeys() {
@@ -1125,7 +1224,7 @@
       let baseOrder = [];
       const saved = localStorage.getItem('switchboard_card_order');
       if (saved) {
-        try { baseOrder = JSON.parse(saved); } catch (e) {}
+        try { baseOrder = JSON.parse(saved); } catch (e) { }
       } else if (globalOrder.length > 0) {
         baseOrder = [...globalOrder];
       }
@@ -1172,7 +1271,7 @@
           const dev = JSON.parse(e.data);
           rawEntities[dev.id] = dev;
           render();
-        } catch (err) {}
+        } catch (err) { }
       });
       sse.onerror = () => {
         setTimeout(loadDevices, 4000);
@@ -1300,7 +1399,7 @@
             const shortName = cleanEntityName(ent.name, group.name, group.area);
             let displayVal = ent.state || 'N/A';
             if (ent.unit) displayVal += ` ${ent.unit}`;
-            const hideBtnHTML = isOrderMode ? 
+            const hideBtnHTML = isOrderMode ?
               `<button class="entity-hide-btn" onclick="toggleHideEntity('${ent.id}', event)" title="${isHidden ? '點擊解除隱藏' : '點擊隱藏此項'}">${isHidden ? '[👁️ 顯示]' : '[✕ 隱藏]'}</button>` : '';
 
             cardHTML += `
@@ -1334,7 +1433,7 @@
             if (isHidden) itemClass += ' is-hidden';
 
             const shortName = cleanEntityName(ent.name, group.name, group.area);
-            const hideBtnHTML = isOrderMode ? 
+            const hideBtnHTML = isOrderMode ?
               `<button class="entity-hide-btn" onclick="toggleHideEntity('${ent.id}', event)" title="${isHidden ? '點擊解除隱藏' : '點擊隱藏此項'}">${isHidden ? '[👁️ 顯示]' : '[✕ 隱藏]'}</button>` : '';
 
             if (isCover) {
@@ -1435,7 +1534,7 @@
 
     function escapeHTML(str) {
       if (!str) return '';
-      return String(str).replace(/[&<>'"]/g, 
+      return String(str).replace(/[&<>'"]/g,
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
       );
     }
@@ -1484,7 +1583,7 @@
           customTopicsMap = {};
           (ctList || []).forEach(c => { customTopicsMap[c.topic] = c; });
         }
-      } catch (e) {}
+      } catch (e) { }
 
       populateStudioUI();
       document.getElementById('eink-studio-modal').style.display = 'flex';
@@ -1625,20 +1724,16 @@
           </div>
           <div class="studio-row" style="margin-bottom:0; font-size:0.78rem;">
             <label>最新第1筆字級:
-              <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].latest_size=this.value; renderStudioLivePreview();">
-                ${['20px','24px','28px','32px','38px','46px'].map(sz => `<option value="${sz}" ${(b.latest_size||'28px')===sz?'selected':''}>${sz}</option>`).join('')}
-              </select>
+              <input class="studio-input" list="dl-latest-sizes" style="width:85px; font-family:monospace;" placeholder="如: 32px" value="${escapeHTML(b.latest_size || '28px')}" oninput="fullLayoutConfig.top_banners[${idx}].latest_size=this.value; renderStudioLivePreview();" onblur="this.value=normalizeSizeInput(this.value); fullLayoutConfig.top_banners[${idx}].latest_size=this.value; renderStudioLivePreview();">
             </label>
             <label>前2~3筆歷史字級:
-              <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].history_size=this.value; renderStudioLivePreview();">
-                ${['12px','14px','16px','18px','20px'].map(sz => `<option value="${sz}" ${(b.history_size||'14px')===sz?'selected':''}>${sz}</option>`).join('')}
-              </select>
+              <input class="studio-input" list="dl-history-sizes" style="width:80px; font-family:monospace;" placeholder="如: 14px" value="${escapeHTML(b.history_size || '14px')}" oninput="fullLayoutConfig.top_banners[${idx}].history_size=this.value; renderStudioLivePreview();" onblur="this.value=normalizeSizeInput(this.value); fullLayoutConfig.top_banners[${idx}].history_size=this.value; renderStudioLivePreview();">
             </label>
             <label>顯示筆數:
               <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].max_history=parseInt(this.value,10); renderStudioLivePreview();">
-                <option value="1" ${b.max_history===1?'selected':''}>僅最新 1 筆</option>
-                <option value="2" ${b.max_history===2?'selected':''}>最近 2 筆</option>
-                <option value="3" ${(b.max_history||3)===3?'selected':''}>最近 3 筆</option>
+                <option value="1" ${b.max_history === 1 ? 'selected' : ''}>僅最新 1 筆</option>
+                <option value="2" ${b.max_history === 2 ? 'selected' : ''}>最近 2 筆</option>
+                <option value="3" ${(b.max_history || 3) === 3 ? 'selected' : ''}>最近 3 筆</option>
               </select>
             </label>
           </div>
@@ -1710,37 +1805,37 @@
           {
             id: 'm1',
             label: '箱內溫濕度',
-            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'temp', prefix: '', unit: '°C' },
-            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'hum',  prefix: '', unit: '%' }
+            primary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'temp', prefix: '', unit: '°C' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'hum', prefix: '', unit: '%' }
           },
           {
             id: 'm2',
             label: '孵化模式/天數',
-            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'mode', prefix: '', unit: '' },
-            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'day',  prefix: 'Day ', unit: '' }
+            primary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'mode', prefix: '', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'day', prefix: 'Day ', unit: '' }
           },
           {
             id: 'm3',
             label: '階段/翻蛋秒數',
-            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'cycle',    prefix: 'C', unit: '' },
+            primary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'cycle', prefix: 'C', unit: '' },
             secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'roll_sec', prefix: '轉', unit: 's' }
           },
           {
             id: 'm4',
             label: '加熱燈/加濕扇',
-            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'heater', prefix: '燈:', unit: '' },
-            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'fan',    prefix: '扇:', unit: '' }
+            primary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'heater', prefix: '燈:', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'fan', prefix: '扇:', unit: '' }
           },
           {
             id: 'm5',
             label: '缺水/翻蛋狀態',
-            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'water_low', prefix: '缺水:', unit: '' },
-            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'roller',    prefix: '馬達:', unit: '' }
+            primary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'water_low', prefix: '缺水:', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'roller', prefix: '馬達:', unit: '' }
           },
           {
             id: 'm6',
             label: '育雛室(現況/目標)',
-            primary:   { source_type: 'topic', topic: 'Farm/Brooder/status', json_key: 'temp', prefix: '',    unit: '°C' },
+            primary: { source_type: 'topic', topic: 'Farm/Brooder/status', json_key: 'temp', prefix: '', unit: '°C' },
             secondary: { source_type: 'topic', topic: 'Farm/Brooder/target', json_key: 'temp', prefix: '目標 ', unit: '°C' }
           }
         ],
@@ -1817,8 +1912,8 @@
         <div class="studio-row" style="margin-bottom:4px; background:rgba(0,0,0,0.2); padding:5px; border-radius:4px;">
           <span style="font-size:0.74rem; color:var(--accent); font-weight:700; min-width:58px;">${titleText}</span>
           <select class="studio-select" onchange="${pathExpr}.source_type=this.value; renderStudioBoxList(); renderStudioLivePreview();">
-            <option value="entity" ${!isTopic?'selected':''}>設備實體 (B4/C1)</option>
-            <option value="topic" ${isTopic?'selected':''}>手寫 MQTT Topic</option>
+            <option value="entity" ${!isTopic ? 'selected' : ''}>設備實體 (B4/C1)</option>
+            <option value="topic" ${isTopic ? 'selected' : ''}>手寫 MQTT Topic</option>
           </select>
           ${!isTopic ? `
             <select class="studio-select" style="flex:1; min-width:160px;" onchange="${pathExpr}.entity_id=this.value; renderStudioLivePreview();">
@@ -1849,13 +1944,16 @@
             <input class="studio-input" style="width:140px;" placeholder="副標題 (選填)" value="${escapeHTML(box.subtitle || '')}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].subtitle=this.value; renderStudioLivePreview();">
             <label style="font-size:0.75rem;">數據每列:
               <select class="studio-select" onchange="fullLayoutConfig.custom_boxes[${bIdx}].metric_cols=parseInt(this.value,10); renderStudioLivePreview();">
-                ${[1,2,3,4,5,6].map(n => `<option value="${n}" ${(box.metric_cols||3)===n?'selected':''}>${n} 格</option>`).join('')}
+                ${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${(box.metric_cols || 3) === n ? 'selected' : ''}>${n} 格</option>`).join('')}
               </select>
             </label>
             <label style="font-size:0.75rem;">按鈕每列:
               <select class="studio-select" onchange="fullLayoutConfig.custom_boxes[${bIdx}].control_cols=parseInt(this.value,10); renderStudioLivePreview();">
-                ${[1,2,3,4].map(n => `<option value="${n}" ${(box.control_cols||2)===n?'selected':''}>${n} 格</option>`).join('')}
+                ${[1, 2, 3, 4].map(n => `<option value="${n}" ${(box.control_cols || 2) === n ? 'selected' : ''}>${n} 格</option>`).join('')}
               </select>
+            </label>
+            <label style="font-size:0.75rem;">數值字級:
+              <input class="studio-input" list="dl-metric-sizes" style="width:78px; font-family:monospace;" placeholder="預設 14px" value="${escapeHTML(box.value_size || '')}" oninput="fullLayoutConfig.custom_boxes[${bIdx}].value_size=this.value; renderStudioLivePreview();" onblur="this.value=normalizeSizeInput(this.value); fullLayoutConfig.custom_boxes[${bIdx}].value_size=this.value; renderStudioLivePreview();">
             </label>
             <div style="margin-left:auto; display:flex; gap:4px;">
               <button class="badge-btn" onclick="moveCustomBox(${bIdx}, -1)">▲</button>
@@ -1873,7 +1971,7 @@
             ${(box.metrics || []).map((m, mIdx) => `
               <div style="border:1px dashed var(--card-border); padding:6px; border-radius:6px; margin-bottom:6px;">
                 <div class="studio-row" style="margin-bottom:4px;">
-                  <span style="font-size:0.75rem; font-weight:700;">格 #${mIdx+1} 名稱:</span>
+                  <span style="font-size:0.75rem; font-weight:700;">格 #${mIdx + 1} 名稱:</span>
                   <input class="studio-input" style="width:140px;" placeholder="如: 育雛室" value="${escapeHTML(m.label)}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].metrics[${mIdx}].label=this.value; renderStudioLivePreview();">
                   <button class="badge-btn" style="font-size:0.72rem; padding:2px 6px;" onclick="toggleSecondarySlot(${bIdx}, ${mIdx})">
                     ${m.secondary ? '➖ 拆開 (移除副數值)' : '➕ 組合第2數值 (如: / 目標溫度)'}
@@ -1938,6 +2036,13 @@
       };
     }
 
+    function normalizeSizeInput(val) {
+      val = (val || '').trim();
+      if (!val) return '';
+      if (/^\d+$/.test(val)) return val + 'px';
+      return val;
+    }
+
     function renderStudioLivePreview() {
       ensureStudioConfig();
       const canvas = document.getElementById('st-live-preview');
@@ -1960,14 +2065,16 @@
           { payload: '系統公告：早安，今日雞舍巡檢正常', timestamp: '08:00:12' }
         ];
         const maxH = b.max_history || 3;
+        const latestSz = normalizeSizeInput(b.latest_size || '28px');
+        const histSz = normalizeSizeInput(b.history_size || '14px');
         html += `<div style="border:3px solid #000; padding:6px 8px; margin-bottom:8px;">`;
         html += `<div style="font-size:11px; font-weight:bold; border-bottom:1px solid #000; margin-bottom:4px;">📢 ${escapeHTML(b.label)} (${escapeHTML(b.topic)})</div>`;
         hist.slice(0, maxH).forEach((m, idx) => {
           const ts = typeof m.timestamp === 'string' && m.timestamp.length > 8 ? m.timestamp.substring(11, 19) : m.timestamp;
           if (idx === 0) {
-            html += `<div style="font-size:${escapeHTML(b.latest_size || '28px')}; font-weight:900; line-height:1.15; margin:4px 0;">${escapeHTML(m.payload)} <span style="font-size:11px; font-weight:normal;">[${escapeHTML(ts)}]</span></div>`;
+            html += `<div style="font-size:${escapeHTML(latestSz)}; font-weight:900; line-height:1.15; margin:4px 0;">${escapeHTML(m.payload)} <span style="font-size:11px; font-weight:normal;">[${escapeHTML(ts)}]</span></div>`;
           } else {
-            html += `<div style="font-size:${escapeHTML(b.history_size || '14px')}; border-top:1px dashed #000; padding-top:2px; margin-top:2px;">[${escapeHTML(ts)}] ${escapeHTML(m.payload)}</div>`;
+            html += `<div style="font-size:${escapeHTML(histSz)}; border-top:1px dashed #000; padding-top:2px; margin-top:2px;">[${escapeHTML(ts)}] ${escapeHTML(m.payload)}</div>`;
           }
         });
         html += `</div>`;
@@ -1981,6 +2088,7 @@
         if (box.metrics && box.metrics.length > 0) {
           const cols = box.metric_cols || 3;
           const pct = Math.floor(100 / cols);
+          const valSz = normalizeSizeInput(box.value_size || '14px');
           html += `<table style="width:100%; border-collapse:collapse; margin-bottom:5px;"><tr>`;
           box.metrics.forEach((cell, i) => {
             if (i > 0 && i % cols === 0) html += `</tr><tr>`;
@@ -1995,7 +2103,7 @@
             const staleStyle = isStale ? 'border:2px dashed #000; background:repeating-linear-gradient(135deg,#fff,#fff 6px,#ddd 6px,#ddd 8px);' : 'border:1px solid #000;';
             html += `<td style="width:${pct}%; ${staleStyle} padding:4px; text-align:center;">
               <div style="font-size:11px; font-weight:bold;">${escapeHTML(cell.label)}${isStale ? ' [逾時]' : ''}</div>
-              <div style="font-size:14px; font-weight:bold; font-family:monospace;">${valHTML}</div>
+              <div style="font-size:${escapeHTML(valSz)}; font-weight:bold; font-family:monospace;">${valHTML}</div>
             </td>`;
           });
           html += `</tr></table>`;
@@ -2047,23 +2155,127 @@
       }
     }
 
+    // --- JSON Export / Import Modal Management (Solves window.prompt truncation bug) ---
     function exportEinkJSON() {
-      syncStudioFromUI();
-      const jsonStr = JSON.stringify(fullLayoutConfig, null, 2);
-      const edited = prompt('您可以複製下方設定 JSON 備份，或直接修改貼上後按確定套用：', jsonStr);
-      if (edited && edited.trim() !== '') {
-        try {
-          const parsed = JSON.parse(edited);
-          fullLayoutConfig = parsed;
-          populateStudioUI();
-        } catch (e) {
-          alert('JSON 語法錯誤: ' + e.message);
-        }
-      }
+      openEinkJSONModal();
     }
 
-    // Startup
-    checkAuth();
+    function openEinkJSONModal() {
+      syncStudioFromUI();
+        const textarea = document.getElementById('st-json-textarea');
+        const feedback = document.getElementById('st-json-feedback');
+        textarea.value = JSON.stringify(fullLayoutConfig, null, 2);
+        feedback.style.color = 'var(--text-muted)';
+        feedback.innerText = `字元數: ${textarea.value.length} (內容已完整載入，無截短)`;
+        document.getElementById('eink-json-modal').style.display = 'flex';
+        textarea.focus();
+      }
+
+      function closeEinkJSONModal() {
+        document.getElementById('eink-json-modal').style.display = 'none';
+      }
+
+      function copyEinkJSONText() {
+        const textarea = document.getElementById('st-json-textarea');
+        const feedback = document.getElementById('st-json-feedback');
+        textarea.select();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textarea.value).then(() => {
+            feedback.style.color = '#22c55e';
+            feedback.innerText = '✅ 已成功複製全部 JSON 內容至剪貼簿！';
+          }).catch(() => {
+            document.execCommand('copy');
+            feedback.style.color = '#22c55e';
+            feedback.innerText = '✅ 已複製 JSON！';
+          });
+        } else {
+          document.execCommand('copy');
+          feedback.style.color = '#22c55e';
+          feedback.innerText = '✅ 已複製 JSON！';
+        }
+      }
+
+      function formatEinkJSONText() {
+        const textarea = document.getElementById('st-json-textarea');
+        const feedback = document.getElementById('st-json-feedback');
+        try {
+          const parsed = JSON.parse(textarea.value);
+          textarea.value = JSON.stringify(parsed, null, 2);
+          feedback.style.color = '#22c55e';
+          feedback.innerText = '✅ JSON 語法完全正確！已自動格式化縮排。';
+        } catch (e) {
+          feedback.style.color = '#ef4444';
+          feedback.innerText = '❌ JSON 語法錯誤: ' + e.message;
+        }
+      }
+
+      function downloadEinkJSONFile() {
+        const textarea = document.getElementById('st-json-textarea');
+        const feedback = document.getElementById('st-json-feedback');
+        try {
+          JSON.parse(textarea.value);
+        } catch (e) {
+          feedback.style.color = '#ef4444';
+          feedback.innerText = '❌ 下載失敗：JSON 語法有誤 (' + e.message + ')';
+          return;
+        }
+        const blob = new Blob([textarea.value], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'layout.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        feedback.style.color = '#22c55e';
+        feedback.innerText = '💾 已下載 layout.json 備份檔！';
+      }
+
+      function loadEinkJSONFromFile(input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        const reader = new FileReader();
+        const feedback = document.getElementById('st-json-feedback');
+        reader.onload = function (e) {
+          const content = e.target.result;
+          try {
+            const parsed = JSON.parse(content);
+            document.getElementById('st-json-textarea').value = JSON.stringify(parsed, null, 2);
+            feedback.style.color = '#22c55e';
+            feedback.innerText = `📂 成功載入檔案: ${file.name} (語法正確)`;
+          } catch (err) {
+            feedback.style.color = '#ef4444';
+            feedback.innerText = '❌ 載入檔案失敗，非有效 JSON 格式: ' + err.message;
+          }
+        };
+        reader.readAsText(file);
+        input.value = '';
+      }
+
+      function applyEinkJSONFromModal() {
+        const textarea = document.getElementById('st-json-textarea');
+        const feedback = document.getElementById('st-json-feedback');
+        try {
+          const parsed = JSON.parse(textarea.value);
+          if (!parsed || typeof parsed !== 'object') {
+            throw new Error('JSON 根節點必須是物件 {...}');
+          }
+          fullLayoutConfig = parsed;
+          ensureStudioConfig();
+          populateStudioUI();
+          closeEinkJSONModal();
+          alert('✅ JSON 配置已成功套用至編輯器！\n您可於左側檢查元件，或確認無誤後點擊「儲存並發佈至 /lite」。');
+        } catch (e) {
+          feedback.style.color = '#ef4444';
+          feedback.innerText = '❌ 套用失敗，JSON 語法錯誤: ' + e.message;
+          alert('JSON 語法錯誤，無法套用:\n' + e.message);
+        }
+      }
+
+      // Startup
+      checkAuth();
   </script>
 </body>
+
 </html>

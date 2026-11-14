@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -75,6 +76,7 @@ type EinkCustomBox struct {
 	Subtitle    string            `json:"subtitle,omitempty"`
 	MetricCols  int               `json:"metric_cols"`  // Number of columns per row for dense metrics (default 3, supports 1~6)
 	ControlCols int               `json:"control_cols"` // Number of columns per row for controls (default 2, supports 1~4)
+	ValueSize   string            `json:"value_size,omitempty"` // Font size for metric values, e.g. "14px", "18px"
 	Metrics     []EinkMetricCell  `json:"metrics"`
 	Controls    []EinkControlItem `json:"controls"`
 }
@@ -141,9 +143,13 @@ func normalizeEinkLayout(cfg *EinkLayoutConfig) {
 	for i := range cfg.TopBanners {
 		if cfg.TopBanners[i].LatestSize == "" {
 			cfg.TopBanners[i].LatestSize = "28px"
+		} else if _, err := strconv.Atoi(cfg.TopBanners[i].LatestSize); err == nil {
+			cfg.TopBanners[i].LatestSize += "px"
 		}
 		if cfg.TopBanners[i].HistorySize == "" {
 			cfg.TopBanners[i].HistorySize = "14px"
+		} else if _, err := strconv.Atoi(cfg.TopBanners[i].HistorySize); err == nil {
+			cfg.TopBanners[i].HistorySize += "px"
 		}
 		if cfg.TopBanners[i].MaxHistory <= 0 || cfg.TopBanners[i].MaxHistory > 3 {
 			cfg.TopBanners[i].MaxHistory = 3
@@ -158,6 +164,11 @@ func normalizeEinkLayout(cfg *EinkLayoutConfig) {
 		}
 		if cfg.CustomBoxes[i].ControlCols <= 0 {
 			cfg.CustomBoxes[i].ControlCols = 2
+		}
+		if cfg.CustomBoxes[i].ValueSize != "" {
+			if _, err := strconv.Atoi(cfg.CustomBoxes[i].ValueSize); err == nil {
+				cfg.CustomBoxes[i].ValueSize += "px"
+			}
 		}
 		if cfg.CustomBoxes[i].Metrics == nil {
 			cfg.CustomBoxes[i].Metrics = []EinkMetricCell{}
