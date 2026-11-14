@@ -140,6 +140,7 @@ EOF
           cat << 'EOF' > build/ipk_control/conffiles
 /etc/config/mqtt-switchboard
 /etc/mqtt-switchboard/config.json
+/etc/mqtt-switchboard/layout.json
 EOF
 
           cat << 'EOF' > build/ipk_control/postinst
@@ -212,6 +213,10 @@ Priority: optional
 Architecture: ${{ matrix.deb_arch }}
 Maintainer: Community Developer
 Description: Ultra-lightweight Web-to-MQTT switchboard with Home Assistant discovery and Kindle E-Ink support
+EOF
+
+            cat << 'EOF' > build/deb_root/DEBIAN/conffiles
+/etc/mqtt-switchboard/config.json
 EOF
 
             cat << 'EOF' > build/deb_root/DEBIAN/postinst

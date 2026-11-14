@@ -105,8 +105,7 @@ start_service() {
 	# Automatically respawn service if it crashes (5 retries, 3600s reset, 5s delay)
 	procd_set_param respawn 3600 5 5
 
-	# Memory safety limits: 32MB max address space, zero core dumps
-	procd_set_param limits as=33554432
+	# Disable core dumps (Note: do NOT set 'limits as=' because Go 64-bit runtime reserves >64MB virtual address space while actual RSS stays ~10MB)
 	procd_set_param limits core="0"
 
 	# Direct logs to system logd/syslog

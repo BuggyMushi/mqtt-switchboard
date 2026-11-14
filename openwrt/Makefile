@@ -40,6 +40,7 @@ endef
 define Package/mqtt-switchboard/conffiles
 /etc/config/mqtt-switchboard
 /etc/mqtt-switchboard/config.json
+/etc/mqtt-switchboard/layout.json
 endef
 
 define Package/mqtt-switchboard/install

@@ -1146,6 +1146,9 @@
       await fetchLayout();
       await loadDevices();
       startSSE();
+      if (urlParams.get('studio') === '1') {
+        openEinkStudio();
+      }
     }
 
     async function loadDevices() {
