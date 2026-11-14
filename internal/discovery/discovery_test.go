@@ -165,3 +165,31 @@ func TestRegistry_MultiEntitySharedStateTopic(t *testing.T) {
 		t.Fatalf("expected temp state 38.5, got %s", temp.State)
 	}
 }
+
+func TestRegistry_CustomTopicBroadcastHistory(t *testing.T) {
+	var subscribed string
+	reg := NewRegistry(func(tp string) { subscribed = tp }, nil)
+
+	reg.EnsureCustomTopic("Farm/Broadcast/text")
+	if subscribed != "Farm/Broadcast/text" {
+		t.Fatalf("expected EnsureCustomTopic to trigger subscription, got %s", subscribed)
+	}
+
+	// Send 4 messages; only latest 3 should be kept in reverse chronological order
+	reg.UpdateStateByTopic("Farm/Broadcast/text", "Msg 1")
+	reg.UpdateStateByTopic("Farm/Broadcast/text", "Msg 2")
+	reg.UpdateStateByTopic("Farm/Broadcast/text", "Msg 3")
+	reg.UpdateStateByTopic("Farm/Broadcast/text", "吃飯囉！")
+
+	ct, ok := reg.GetCustomTopic("Farm/Broadcast/text")
+	if !ok {
+		t.Fatalf("expected custom topic entry")
+	}
+	if len(ct.History) != 3 {
+		t.Fatalf("expected max 3 history items, got %d", len(ct.History))
+	}
+	if ct.History[0].Payload != "吃飯囉！" || ct.History[1].Payload != "Msg 3" || ct.History[2].Payload != "Msg 2" {
+		t.Fatalf("unexpected history order: %+v", ct.History)
+	}
+}
+

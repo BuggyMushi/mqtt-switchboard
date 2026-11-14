@@ -22,9 +22,10 @@
 
 - **⚡ Ultra-Low Resource Usage**: Single static binary compiled with `CGO_ENABLED=0`. Constant RSS memory footprint strictly throttled to **8MB ~ 12MB** (guaranteed < 15MB).
 - **📦 Zero External Runtime Dependencies**: Embedded modern single-page dashboard (`//go:embed`) with zero external CDN / Google Fonts requirements. Fully operational in air-gapped / offline local networks.
-- **📱 Dual-Mode Display (Mobile Dark Glassmorphism + E-Ink Monochrome)**:
-  - **Standard Mode**: Sleek dark card grid layout with real-time feedback.
-  - **E-Ink Mode (`?eink=1`)**: High-contrast pure black-and-white theme (`#000` / `#FFF`), zero transitions, and no spinning animations to eliminate ghosting and screen flickering on e-paper devices.
+- **📱 Tri-Mode Display (Modern Dark + E-Ink Monochrome + Legacy Kindle `/lite` SSR)**:
+  - **Standard Mode (`/`)**: Sleek dark card grid layout with real-time SSE feedback and client-side **E-Ink Layout Studio**.
+  - **E-Ink Mode (`/?eink=1`)**: High-contrast pure black-and-white theme (`#000` / `#FFF`), zero transitions, and no spinning animations.
+  - **Legacy Kindle / E-Ink Server-Side Rendered Mode (`/lite`)**: Strictly LAN-only (`403` on WAN), zero client JS/CSS computation overhead, `/proc/net/arp` hardware MAC authentication & action auditing, top broadcast banners (up to 3 history items with configurable font sizes), composite cross-device boxes (dense `Primary / Secondary` dual-slot metrics + cherry-picked controls), anti-ghosting screen flash (`?clean=1`), and `<del>` strikethrough + diagonal slash staleness alerts. See [`EINK_STUDIO_GUIDE.md`](EINK_STUDIO_GUIDE.md).
 - **🔌 Home Assistant MQTT Discovery**: Auto-detects and provisions device cards dynamically by listening to `<discovery_prefix>/+/+/config` topics (`switch`, `light`, `button`, `sensor`, `binary_sensor`).
 - **🛡️ Physical Relay Debounce Protection**: 1-second backend rate-limiting per device to prevent relay contact chattering and hardware burnout.
 - **🔒 Industrial-Grade Security**:

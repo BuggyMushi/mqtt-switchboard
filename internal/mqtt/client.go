@@ -188,7 +188,14 @@ func (c *Client) resubscribeAllStates() {
 			c.SubscribeStateTopic(dev.StateTopic)
 		}
 	}
+	customTopics := c.registry.GetAllCustomTopics()
+	for _, ct := range customTopics {
+		if ct.Topic != "" {
+			c.SubscribeStateTopic(ct.Topic)
+		}
+	}
 }
+
 
 // TriggerDevice executes a command payload on device with debounce protection
 func (c *Client) TriggerDevice(deviceID, requestedAction, user, clientIP string) error {

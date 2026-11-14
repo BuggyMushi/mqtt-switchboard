@@ -115,3 +115,10 @@ func TestIsPrivateOrLocalIP(t *testing.T) {
 	}
 }
 
+func TestNormalizeMAC(t *testing.T) {
+	if got := NormalizeMAC("aa-bb-cc-11-22-33"); got != "AA:BB:CC:11:22:33" {
+		t.Fatalf("expected AA:BB:CC:11:22:33, got %s", got)
+	}
+}
+
+

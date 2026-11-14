@@ -32,11 +32,27 @@ type DeviceEntity struct {
 	Source            string    `json:"source"`             // "discovery" or "static"
 }
 
-// Registry manages the in-memory pool of active devices and entity groups
+// TopicMessage represents a single historical MQTT message on a custom topic
+type TopicMessage struct {
+	Payload   string    `json:"payload"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// CustomTopicEntry stores recent messages (up to 3) and parsed JSON fields for arbitrary MQTT topics
+type CustomTopicEntry struct {
+	Topic       string                 `json:"topic"`
+	LastPayload string                 `json:"last_payload"`
+	LastJSON    map[string]interface{} `json:"last_json,omitempty"`
+	History     []TopicMessage         `json:"history"` // Index 0 is newest, max 3 items
+	LastUpdated time.Time              `json:"last_updated"`
+}
+
+// Registry manages the in-memory pool of active devices, entity groups, and custom topic cache
 type Registry struct {
 	mu           sync.RWMutex
 	devices      map[string]*DeviceEntity
-	topicToIDs   map[string][]string // state_topic -> list of device IDs (supports multi-channel sharing)
+	topicToIDs   map[string][]string          // state_topic -> list of device IDs (supports multi-channel sharing)
+	customTopics map[string]*CustomTopicEntry // arbitrary MQTT topic -> cached messages & JSON
 	onNewTopic   func(stateTopic string)
 	onStateEvent func(entity *DeviceEntity)
 }
@@ -46,10 +62,12 @@ func NewRegistry(onNewTopic func(stateTopic string), onStateEvent func(entity *D
 	return &Registry{
 		devices:      make(map[string]*DeviceEntity),
 		topicToIDs:   make(map[string][]string),
+		customTopics: make(map[string]*CustomTopicEntry),
 		onNewTopic:   onNewTopic,
 		onStateEvent: onStateEvent,
 	}
 }
+
 
 // ParseDiscoveryTopic parses HA discovery topic structure:
 // <prefix>/<component>/[<node_id>/]<object_id>/config
@@ -335,15 +353,8 @@ func (r *Registry) Unregister(id string) {
 	}
 }
 
-// UpdateStateByTopic updates device states when a state topic payload arrives
+// UpdateStateByTopic updates device states and custom topic history when a payload arrives
 func (r *Registry) UpdateStateByTopic(topic, payload string) []*DeviceEntity {
-	r.mu.Lock()
-	ids, exists := r.topicToIDs[topic]
-	if !exists || len(ids) == 0 {
-		r.mu.Unlock()
-		return nil
-	}
-
 	trimmed := strings.TrimSpace(payload)
 	var jsonDoc map[string]interface{}
 	isJSON := false
@@ -351,6 +362,38 @@ func (r *Registry) UpdateStateByTopic(topic, payload string) []*DeviceEntity {
 		if err := json.Unmarshal([]byte(trimmed), &jsonDoc); err == nil {
 			isJSON = true
 		}
+	}
+
+	now := time.Now()
+
+	r.mu.Lock()
+	// 1. Update customTopics cache ONLY if this topic was registered in customTopics
+	if ct, ctExists := r.customTopics[topic]; ctExists {
+		ct.LastPayload = trimmed
+		ct.LastUpdated = now
+		if isJSON {
+			ct.LastJSON = jsonDoc
+		} else {
+			ct.LastJSON = nil
+		}
+		if trimmed != "" {
+			// Prepend newest message, keep max 3
+			newHist := make([]TopicMessage, 0, 3)
+			newHist = append(newHist, TopicMessage{Payload: trimmed, Timestamp: now})
+			for _, old := range ct.History {
+				if len(newHist) < 3 {
+					newHist = append(newHist, old)
+				}
+			}
+			ct.History = newHist
+		}
+	}
+
+	// 2. Update registered HA / Static entities if any match this topic
+	ids, exists := r.topicToIDs[topic]
+	if !exists || len(ids) == 0 {
+		r.mu.Unlock()
+		return nil
 	}
 
 	var updated []*DeviceEntity
@@ -378,7 +421,7 @@ func (r *Registry) UpdateStateByTopic(topic, payload string) []*DeviceEntity {
 		}
 
 		entity.State = targetVal
-		entity.LastUpdated = time.Now()
+		entity.LastUpdated = now
 		cpy := *entity
 		updated = append(updated, &cpy)
 	}
@@ -393,6 +436,61 @@ func (r *Registry) UpdateStateByTopic(topic, payload string) []*DeviceEntity {
 
 	return updated
 }
+
+// EnsureCustomTopic registers an arbitrary MQTT topic for monitoring and triggers subscription
+func (r *Registry) EnsureCustomTopic(topic string) {
+	topic = strings.TrimSpace(topic)
+	if topic == "" {
+		return
+	}
+	r.mu.Lock()
+	_, exists := r.customTopics[topic]
+	if !exists {
+		// Cap maximum tracked custom topics to 128 to prevent unbounded RAM growth
+		if len(r.customTopics) >= 128 {
+			r.mu.Unlock()
+			return
+		}
+		r.customTopics[topic] = &CustomTopicEntry{
+			Topic:   topic,
+			History: make([]TopicMessage, 0, 3),
+		}
+	}
+	r.mu.Unlock()
+
+	if r.onNewTopic != nil {
+		r.onNewTopic(topic)
+	}
+}
+
+// GetCustomTopic returns a copy of a tracked custom topic entry
+func (r *Registry) GetCustomTopic(topic string) (CustomTopicEntry, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	ct, ok := r.customTopics[topic]
+	if !ok {
+		return CustomTopicEntry{}, false
+	}
+	cpy := *ct
+	cpy.History = append([]TopicMessage(nil), ct.History...)
+	return cpy, true
+}
+
+// GetAllCustomTopics returns all tracked custom topics
+func (r *Registry) GetAllCustomTopics() []CustomTopicEntry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	res := make([]CustomTopicEntry, 0, len(r.customTopics))
+	for _, ct := range r.customTopics {
+		cpy := *ct
+		cpy.History = append([]TopicMessage(nil), ct.History...)
+		res = append(res, cpy)
+	}
+	return res
+}
+
 
 // GetAll returns slice of all registered entities
 func (r *Registry) GetAll() []DeviceEntity {

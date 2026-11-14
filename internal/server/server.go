@@ -78,12 +78,15 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/devices/{id}/action", s.requireAuth(s.handleDeviceAction))
 	mux.HandleFunc("GET /api/layout", s.requireAuth(s.handleGetLayout))
 	mux.HandleFunc("POST /api/layout", s.requireAuth(s.handleSaveLayout))
+	mux.HandleFunc("GET /api/arp", s.requireAuth(s.handleGetARP))
+	mux.HandleFunc("GET /api/custom-topics", s.requireAuth(s.handleGetCustomTopics))
 	mux.HandleFunc("GET /api/events", s.requireAuth(s.handleSSE))
 
-	// Kindle & Legacy E-Ink Server-Side Rendered Endpoints
+	// Kindle & Legacy E-Ink Server-Side Rendered Endpoints (Strictly LAN-only)
 	mux.HandleFunc("GET /lite", s.handleLite)
 	mux.HandleFunc("POST /lite/login", s.handleLiteLogin)
 	mux.HandleFunc("POST /lite/action", s.handleLiteAction)
+	mux.HandleFunc("GET /lite/action", s.handleLiteAction)
 	mux.HandleFunc("GET /lite/logout", s.handleLiteLogout)
 
 	// Embedded Web UI
@@ -288,51 +291,72 @@ func getLayoutFilePath() string {
 	return "./layout.json"
 }
 
-type layoutPayload struct {
-	Order []string `json:"order"`
-}
-
 func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
-	path := getLayoutFilePath()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		writeJSON(w, http.StatusOK, layoutPayload{Order: []string{}})
-		return
-	}
-	var l layoutPayload
-	if err := json.Unmarshal(data, &l); err != nil {
-		writeJSON(w, http.StatusOK, layoutPayload{Order: []string{}})
-		return
-	}
-	writeJSON(w, http.StatusOK, l)
+	cfg := s.LoadOrGetEinkLayout()
+	writeJSON(w, http.StatusOK, cfg)
 }
 
 func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get("X-Authenticated-User")
 	clientIP := auth.GetRealIP(r)
 
-	var req layoutPayload
-	r.Body = http.MaxBytesReader(w, r.Body, 16384)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, 131072) // Allow up to 128KB for rich layout configs
+	var raw map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 		http.Error(w, `{"error":"invalid format"}`, http.StatusBadRequest)
 		return
 	}
 
-	data, err := json.MarshalIndent(req, "", "  ")
-	if err != nil {
-		http.Error(w, `{"error":"serialize failed"}`, http.StatusInternalServerError)
-		return
+	// Merge into current layout so simple {"order": [...]} requests don't wipe out E-Ink boxes
+	current := s.LoadOrGetEinkLayout()
+	rawBytes, _ := json.Marshal(raw)
+	if _, hasGlobal := raw["global"]; hasGlobal {
+		// Full E-Ink studio configuration save
+		var fullCfg EinkLayoutConfig
+		if err := json.Unmarshal(rawBytes, &fullCfg); err != nil {
+			http.Error(w, `{"error":"invalid layout schema"}`, http.StatusBadRequest)
+			return
+		}
+		if len(fullCfg.Order) == 0 && len(current.Order) > 0 {
+			fullCfg.Order = current.Order
+		}
+		current = &fullCfg
+	} else if orderRaw, hasOrder := raw["order"]; hasOrder {
+		// Legacy / simple card order update
+		var orderOnly struct {
+			Order []string `json:"order"`
+		}
+		if json.Unmarshal(rawBytes, &orderOnly) == nil {
+			_ = orderRaw
+			current.Order = orderOnly.Order
+		}
 	}
 
-	path := getLayoutFilePath()
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := s.SaveEinkLayout(current); err != nil {
 		http.Error(w, `{"error":"write failed"}`, http.StatusInternalServerError)
 		return
 	}
 
-	s.logger.Action(user, "layout", "SAVE_DEFAULT_ORDER", clientIP)
+	s.logger.Action(user, "layout", "SAVE_EINK_AND_DEFAULT_LAYOUT", clientIP)
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
+
+func (s *Server) handleGetARP(w http.ResponseWriter, r *http.Request) {
+	clientIP := auth.GetRealIP(r)
+	callerMAC := auth.GetMACByIP(clientIP)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"caller_ip":  clientIP,
+		"caller_mac": callerMAC,
+		"arp_table":  auth.ListARPClients(),
+	})
+}
+
+func (s *Server) handleGetCustomTopics(w http.ResponseWriter, r *http.Request) {
+	// Ensure layout topics are subscribed first
+	_ = s.LoadOrGetEinkLayout()
+	writeJSON(w, http.StatusOK, s.registry.GetAllCustomTopics())
+}
+
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)

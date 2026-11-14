@@ -133,6 +133,7 @@ func main() {
 
 	// 7. Start HTTP Server using embedded web assets
 	httpServer := server.NewServer(cfg, authMgr, registry, mqttClient, sseHub, logger, web.Assets)
+	_ = httpServer.LoadOrGetEinkLayout() // Pre-load E-Ink layout & subscribe to custom topics
 	go func() {
 		if err := httpServer.Start(); err != nil {
 			logger.Info("HTTP Server stopped: %v", err)

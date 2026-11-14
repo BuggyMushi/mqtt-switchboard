@@ -596,6 +596,115 @@
       padding: 60px 20px;
       color: var(--text-muted);
     }
+
+    /* -------------------------------------------------------------
+       7. E-Ink Layout Studio Modal (Client-Side PC Editor, Zero WRT CPU Load)
+       ------------------------------------------------------------- */
+    .studio-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 12, 20, 0.92);
+      z-index: 950;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .studio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .studio-body {
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (max-width: 1100px) {
+      .studio-body {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+      }
+    }
+
+    .studio-editor {
+      overflow-y: auto;
+      padding-right: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .studio-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .studio-section h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .studio-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .studio-input, .studio-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 9px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+    }
+
+    .studio-subcard {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--item-border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .studio-preview-pane {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .eink-paper-canvas {
+      background: #ffffff;
+      color: #000000;
+      border: 4px solid #000000;
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      font-family: monospace, sans-serif;
+    }
   </style>
 </head>
 <body>
@@ -642,11 +751,109 @@
       </div>
       <button class="badge-btn" id="view-mode-btn" onclick="toggleViewMode()" title="切換簡易面板或詳細診斷模式">[模式: 簡易]</button>
       <button class="badge-btn" id="order-mode-btn" onclick="toggleOrderMode()">[排序]</button>
-      <a href="/lite" class="badge-btn" style="text-decoration:none; color:inherit;" title="專為老舊 Kindle / 電子紙閱讀器設計的純伺服器渲染極簡版">[Kindle版]</a>
+      <button class="badge-btn" onclick="openEinkStudio()" style="border-color: var(--accent); color: var(--accent);" title="在現代電腦上配置老舊 Kindle / E-Ink 專屬版面、廣播與組合方塊">[🛠️ E-Ink 版面配置器]</button>
+      <a href="/lite" class="badge-btn" style="text-decoration:none; color:inherit;" title="專為老舊 Kindle / 電子紙閱讀器設計的純伺服器渲染極簡版">[Kindle版 (/lite)]</a>
       <button class="badge-btn" id="toggle-eink" onclick="toggleEinkMode()">[E-Ink]</button>
       <button class="badge-btn" onclick="logout()">登出</button>
     </div>
   </header>
+
+  <!-- E-Ink Layout Studio Modal -->
+  <div id="eink-studio-modal" class="studio-overlay">
+    <div class="studio-header">
+      <div>
+        <h2 style="font-size:1.15rem;">📟 老舊 Kindle / E-Ink 專屬版面配置器 (Layout Studio)</h2>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+          所有排版預覽均由您目前的電腦瀏覽器運算，OpenWrt 路由器零負擔；儲存後由伺服器直接輸出極簡無負擔 HTML 表格給 E-Ink 設備。
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="badge-btn" onclick="addEggrollerTemplateBox()" title="快速插入智慧孵蛋機 (Eggroller) 範例監控大框">[🐣 插入孵蛋機範例框]</button>
+        <button class="badge-btn" onclick="exportEinkJSON()">[📤 匯出/手改 JSON]</button>
+        <button class="badge-btn" style="background:var(--accent); color:#0b0f19; font-weight:700;" onclick="saveEinkStudioConfig()">[💾 儲存並發佈至 /lite]</button>
+        <button class="badge-btn" onclick="closeEinkStudio()">[✕ 關閉]</button>
+      </div>
+    </div>
+
+    <div class="studio-body">
+      <!-- Left Column: Visual Configuration Controls -->
+      <div class="studio-editor">
+
+        <!-- Section 1: Global E-Ink Settings -->
+        <div class="studio-section">
+          <h3>1. 全域 E-Ink 顯示與單頁防呆設定</h3>
+          <div class="studio-row">
+            <label><input type="checkbox" id="st-allow-lan" onchange="syncStudioFromUI()"> 區網 (LAN) 免帳密直連 `/lite`</label>
+            <label><input type="checkbox" id="st-pure-nocss" onchange="syncStudioFromUI()"> 極限無 CSS 模式 (`&lt;table border="1"&gt;`)</label>
+            <label><input type="checkbox" id="st-show-unassigned" onchange="syncStudioFromUI()"> 底部自動列出未分組新設備</label>
+          </div>
+          <div class="studio-row">
+            <label>定時刷新(秒, 0=手動): <input type="number" id="st-refresh-sec" class="studio-input" style="width:70px;" min="0" max="3600" onchange="syncStudioFromUI()"></label>
+            <label>斷線/逾時斜線警告(分, 0=關): <input type="number" id="st-stale-min" class="studio-input" style="width:65px;" min="0" max="1440" onchange="syncStudioFromUI()"></label>
+            <label>單頁未分組物件上限(防翻頁):
+              <select id="st-max-items" class="studio-select" onchange="syncStudioFromUI()">
+                <option value="15">15 件 (6吋小螢幕)</option>
+                <option value="30">30 件 (預設 6"~10")</option>
+                <option value="50">50 件 (10"~13" 看板)</option>
+                <option value="100">100 件 (20" 大型看板)</option>
+              </select>
+            </label>
+          </div>
+          <div class="studio-row">
+            <label><input type="checkbox" id="st-night-rest" onchange="syncStudioFromUI()"> 啟用夜間休眠防烙印</label>
+            <label>休眠時段(時): <input type="number" id="st-night-start" class="studio-input" style="width:55px;" min="0" max="23" onchange="syncStudioFromUI()"> 點 ～ <input type="number" id="st-night-end" class="studio-input" style="width:55px;" min="0" max="23" onchange="syncStudioFromUI()"> 點</label>
+          </div>
+        </div>
+
+        <!-- Section 2: Authorized E-Ink Devices (WRT ARP MAC Binding) -->
+        <div class="studio-section">
+          <h3>
+            <span>2. E-Ink 設備硬體 MAC 綁定與操作識別 (WRT `/proc/net/arp` 自動辨識)</span>
+            <button class="badge-btn" onclick="addAuthorizedMac()">[➕ 新增設備白名單]</button>
+          </h3>
+          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:8px;">
+            登記 Kindle 的 MAC 後，該設備連入 `/lite` 免打密碼，且觸發開關時系統日誌會直接記錄是哪一台 E-Ink 設備操作。
+          </div>
+          <div id="st-arp-suggestions" style="margin-bottom:8px; font-size:0.75rem;"></div>
+          <div id="st-mac-list"></div>
+        </div>
+
+        <!-- Section 3: Top Broadcast / Plain-Text Banners (Max 3 History, Adjustable Font Sizes) -->
+        <div class="studio-section">
+          <h3>
+            <span>3. 頂部 MQTT 廣播 / 純文字看板區 (保留最近 3 筆，最新訊息大字顯示)</span>
+            <button class="badge-btn" onclick="addTopBanner()">[➕ 新增廣播區塊]</button>
+          </h3>
+          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:8px;">
+            適合顯示「叫吃飯！」廣播、緊急通知或孵蛋機 `Farm/Eggroller/RptMess` 文字回報。可調最新第 1 筆與歷史第 2~3 筆字體大小。
+          </div>
+          <div id="st-banner-list"></div>
+        </div>
+
+        <!-- Section 4: Composite Boxes (A packs B4,B5 + C1,C6,C7 + Dual-Slot Cells) -->
+        <div class="studio-section">
+          <h3>
+            <span>4. 自定義複合大框 (自由跨設備抽選 B4,B5,C1,C6 密集排列 + 雙數值組合)</span>
+            <button class="badge-btn" onclick="addCustomBox()">[➕ 新增自定義大框 (Box)]</button>
+          </h3>
+          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:8px;">
+            每個大框可任意挑選不同設備的感測器或手寫 Topic，並支援「主數值 + 副數值」組合成一格（例如：`[育雛室: 32.5°C / 目標 33.0°C]`）。
+          </div>
+          <div id="st-box-list"></div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Live Monochrome E-Ink Simulation Preview -->
+      <div class="studio-preview-pane">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:0.85rem; font-weight:700;">📖 即時 Kindle / E-Ink 渲染預覽</span>
+          <a href="/lite" target="_blank" class="badge-btn" style="text-decoration:none; font-size:0.75rem;">[↗ 新分頁開啟真實 /lite]</a>
+        </div>
+        <div id="st-live-preview" class="eink-paper-canvas"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Device Grid -->
   <main class="grid-container" id="device-grid">
@@ -665,6 +872,9 @@
 
     let globalOrder = [];
     let customOrder = []; // Active display order
+    let fullLayoutConfig = null;
+    let customTopicsMap = {};
+    let arpList = [];
 
     // Initialize View Mode UI
     function updateViewModeBtn() {
@@ -895,6 +1105,7 @@
         const res = await fetch('/api/layout');
         if (res.ok) {
           const data = await res.json();
+          fullLayoutConfig = data;
           if (Array.isArray(data.order)) {
             globalOrder = data.order;
           }
@@ -1224,6 +1435,628 @@
       return String(str).replace(/[&<>'"]/g, 
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
       );
+    }
+
+    /* =============================================================
+       5. E-Ink Layout Studio Logic (Runs on PC Browser, Zero WRT Load)
+       ============================================================= */
+    function ensureStudioConfig() {
+      if (!fullLayoutConfig || typeof fullLayoutConfig !== 'object') {
+        fullLayoutConfig = {};
+      }
+      if (!fullLayoutConfig.global) {
+        fullLayoutConfig.global = {
+          pure_no_css: false,
+          default_refresh_sec: 60,
+          night_rest_enabled: false,
+          night_rest_start_hour: 18,
+          night_rest_end_hour: 8,
+          stale_timeout_minutes: 15,
+          max_unassigned_items: 30,
+          show_unassigned: true,
+          allow_all_lan: false
+        };
+      }
+      if (!Array.isArray(fullLayoutConfig.authorized_devices)) fullLayoutConfig.authorized_devices = [];
+      if (!Array.isArray(fullLayoutConfig.top_banners)) fullLayoutConfig.top_banners = [];
+      if (!Array.isArray(fullLayoutConfig.custom_boxes)) fullLayoutConfig.custom_boxes = [];
+      if (!Array.isArray(fullLayoutConfig.hidden_unassigned)) fullLayoutConfig.hidden_unassigned = [];
+      if (!Array.isArray(fullLayoutConfig.order)) fullLayoutConfig.order = [...customOrder];
+    }
+
+    async function openEinkStudio() {
+      await fetchLayout();
+      ensureStudioConfig();
+      try {
+        const [arpRes, ctRes] = await Promise.all([
+          fetch('/api/arp'),
+          fetch('/api/custom-topics')
+        ]);
+        if (arpRes.ok) {
+          const arpData = await arpRes.json();
+          arpList = arpData.arp_table || [];
+        }
+        if (ctRes.ok) {
+          const ctList = await ctRes.json();
+          customTopicsMap = {};
+          (ctList || []).forEach(c => { customTopicsMap[c.topic] = c; });
+        }
+      } catch (e) {}
+
+      populateStudioUI();
+      document.getElementById('eink-studio-modal').style.display = 'flex';
+    }
+
+    function closeEinkStudio() {
+      document.getElementById('eink-studio-modal').style.display = 'none';
+    }
+
+    function populateStudioUI() {
+      ensureStudioConfig();
+      const g = fullLayoutConfig.global;
+      document.getElementById('st-allow-lan').checked = !!g.allow_all_lan;
+      document.getElementById('st-pure-nocss').checked = !!g.pure_no_css;
+      document.getElementById('st-show-unassigned').checked = (g.show_unassigned !== false);
+      document.getElementById('st-refresh-sec').value = g.default_refresh_sec ?? 60;
+      document.getElementById('st-stale-min').value = g.stale_timeout_minutes ?? 15;
+      document.getElementById('st-max-items').value = String(g.max_unassigned_items || 30);
+      document.getElementById('st-night-rest').checked = !!g.night_rest_enabled;
+      document.getElementById('st-night-start').value = g.night_rest_start_hour ?? 18;
+      document.getElementById('st-night-end').value = g.night_rest_end_hour ?? 8;
+
+      renderStudioArpSuggestions();
+      renderStudioMacList();
+      renderStudioBannerList();
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function syncStudioFromUI() {
+      ensureStudioConfig();
+      const g = fullLayoutConfig.global;
+      g.allow_all_lan = document.getElementById('st-allow-lan').checked;
+      g.pure_no_css = document.getElementById('st-pure-nocss').checked;
+      g.show_unassigned = document.getElementById('st-show-unassigned').checked;
+      g.default_refresh_sec = parseInt(document.getElementById('st-refresh-sec').value || '0', 10);
+      g.stale_timeout_minutes = parseInt(document.getElementById('st-stale-min').value || '0', 10);
+      g.max_unassigned_items = parseInt(document.getElementById('st-max-items').value || '30', 10);
+      g.night_rest_enabled = document.getElementById('st-night-rest').checked;
+      g.night_rest_start_hour = parseInt(document.getElementById('st-night-start').value || '18', 10);
+      g.night_rest_end_hour = parseInt(document.getElementById('st-night-end').value || '8', 10);
+      renderStudioLivePreview();
+    }
+
+    function renderStudioArpSuggestions() {
+      const el = document.getElementById('st-arp-suggestions');
+      if (!arpList || arpList.length === 0) {
+        el.innerHTML = '<span>💡 區網 ARP 偵測：目前無額外 ARP 紀錄（或非運行於 OpenWrt / Linux 環境），您可直接手動輸入 MAC 或 Token。</span>';
+        return;
+      }
+      let html = '<span>💡 點擊快速從路由器 ARP 表加入區網設備：</span> ';
+      arpList.forEach(item => {
+        html += `<button class="badge-btn" style="padding:2px 6px; font-size:0.72rem; margin:2px;" onclick="quickAddArpMac('${escapeHTML(item.mac)}', '${escapeHTML(item.ip)}')">➕ ${escapeHTML(item.ip)} (${escapeHTML(item.mac)})</button>`;
+      });
+      el.innerHTML = html;
+    }
+
+    function quickAddArpMac(mac, ip) {
+      ensureStudioConfig();
+      if (fullLayoutConfig.authorized_devices.some(d => d.mac === mac)) return;
+      fullLayoutConfig.authorized_devices.push({
+        mac: mac,
+        name: `Kindle_${ip.split('.').pop()}`,
+        token: ''
+      });
+      renderStudioMacList();
+      renderStudioLivePreview();
+    }
+
+    function addAuthorizedMac() {
+      ensureStudioConfig();
+      fullLayoutConfig.authorized_devices.push({
+        mac: 'AA:BB:CC:11:22:33',
+        name: '雞舍_Kindle',
+        token: ''
+      });
+      renderStudioMacList();
+    }
+
+    function removeAuthorizedMac(idx) {
+      fullLayoutConfig.authorized_devices.splice(idx, 1);
+      renderStudioMacList();
+    }
+
+    function renderStudioMacList() {
+      const container = document.getElementById('st-mac-list');
+      const list = fullLayoutConfig.authorized_devices;
+      if (list.length === 0) {
+        container.innerHTML = '<div style="font-size:0.78rem; color:var(--text-muted);">尚未設定特定 MAC 白名單。</div>';
+        return;
+      }
+      container.innerHTML = list.map((dev, idx) => `
+        <div class="studio-row">
+          <input class="studio-input" style="width:155px; font-family:monospace;" placeholder="MAC (AA:BB:CC...)" value="${escapeHTML(dev.mac)}" onchange="fullLayoutConfig.authorized_devices[${idx}].mac=this.value.toUpperCase(); renderStudioLivePreview();">
+          <input class="studio-input" style="width:150px;" placeholder="設備名稱 (如: 孵蛋室Kindle)" value="${escapeHTML(dev.name)}" onchange="fullLayoutConfig.authorized_devices[${idx}].name=this.value; renderStudioLivePreview();">
+          <input class="studio-input" style="width:130px;" placeholder="備用Token (選填)" value="${escapeHTML(dev.token || '')}" onchange="fullLayoutConfig.authorized_devices[${idx}].token=this.value;">
+          <button class="badge-btn" onclick="removeAuthorizedMac(${idx})">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // --- Section 3: Top Broadcast Banners ---
+    function addTopBanner() {
+      ensureStudioConfig();
+      fullLayoutConfig.top_banners.push({
+        id: 'banner_' + Date.now(),
+        label: '廣播通知',
+        topic: 'Farm/Broadcast/text',
+        json_key: '',
+        latest_size: '32px',
+        history_size: '14px',
+        max_history: 3
+      });
+      renderStudioBannerList();
+      renderStudioLivePreview();
+    }
+
+    function removeTopBanner(idx) {
+      fullLayoutConfig.top_banners.splice(idx, 1);
+      renderStudioBannerList();
+      renderStudioLivePreview();
+    }
+
+    function renderStudioBannerList() {
+      const container = document.getElementById('st-banner-list');
+      const list = fullLayoutConfig.top_banners;
+      if (list.length === 0) {
+        container.innerHTML = '<div style="font-size:0.78rem; color:var(--text-muted);">尚無頂部廣播區塊。點擊右上角「➕ 新增廣播區塊」即可監聽叫吃飯廣播或 Eggroller RptMess。</div>';
+        return;
+      }
+      container.innerHTML = list.map((b, idx) => `
+        <div class="studio-subcard">
+          <div class="studio-row">
+            <input class="studio-input" style="width:130px;" placeholder="標題 (如: 廣播/孵蛋回報)" value="${escapeHTML(b.label)}" onchange="fullLayoutConfig.top_banners[${idx}].label=this.value; renderStudioLivePreview();">
+            <input class="studio-input" style="flex:1; min-width:170px; font-family:monospace;" placeholder="MQTT Topic (如 Farm/Eggroller/RptMess)" value="${escapeHTML(b.topic)}" onchange="fullLayoutConfig.top_banners[${idx}].topic=this.value; renderStudioLivePreview();">
+            <input class="studio-input" style="width:95px; font-family:monospace;" placeholder="JSON Key(選填)" value="${escapeHTML(b.json_key || '')}" onchange="fullLayoutConfig.top_banners[${idx}].json_key=this.value; renderStudioLivePreview();">
+            <button class="badge-btn" onclick="removeTopBanner(${idx})">✕ 刪除</button>
+          </div>
+          <div class="studio-row" style="margin-bottom:0; font-size:0.78rem;">
+            <label>最新第1筆字級:
+              <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].latest_size=this.value; renderStudioLivePreview();">
+                ${['20px','24px','28px','32px','38px','46px'].map(sz => `<option value="${sz}" ${(b.latest_size||'28px')===sz?'selected':''}>${sz}</option>`).join('')}
+              </select>
+            </label>
+            <label>前2~3筆歷史字級:
+              <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].history_size=this.value; renderStudioLivePreview();">
+                ${['12px','14px','16px','18px','20px'].map(sz => `<option value="${sz}" ${(b.history_size||'14px')===sz?'selected':''}>${sz}</option>`).join('')}
+              </select>
+            </label>
+            <label>顯示筆數:
+              <select class="studio-select" onchange="fullLayoutConfig.top_banners[${idx}].max_history=parseInt(this.value,10); renderStudioLivePreview();">
+                <option value="1" ${b.max_history===1?'selected':''}>僅最新 1 筆</option>
+                <option value="2" ${b.max_history===2?'selected':''}>最近 2 筆</option>
+                <option value="3" ${(b.max_history||3)===3?'selected':''}>最近 3 筆</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- Section 4: Composite Boxes (A packs B4,B5 + C1,C6,C7 + Dual-Slot Cells) ---
+    function getEntityOptionsHTML(selectedId, filterControlsOnly = false) {
+      const ids = Object.keys(rawEntities);
+      ids.sort((a, b) => {
+        const ea = rawEntities[a], eb = rawEntities[b];
+        const ga = ea.device_name || ea.device_id || '';
+        const gb = eb.device_name || eb.device_id || '';
+        return (ga + ea.name).localeCompare(gb + eb.name, undefined, { numeric: true });
+      });
+
+      let html = `<option value="">-- 請選擇設備實體 (${ids.length}) --</option>`;
+      ids.forEach(id => {
+        const ent = rawEntities[id];
+        const isCtrl = (ent.component === 'switch' || ent.component === 'light' || ent.component === 'button' || ent.component === 'cover');
+        if (filterControlsOnly && !isCtrl) return;
+        const devLabel = ent.device_name || ent.device_id || '獨立';
+        const shortName = cleanEntityName(ent.name, ent.device_name, ent.device_area);
+        const sel = (id === selectedId) ? 'selected' : '';
+        html += `<option value="${escapeHTML(id)}" ${sel}>[${escapeHTML(devLabel)}] ${escapeHTML(shortName)} (${escapeHTML(ent.state || '--')})</option>`;
+      });
+      if (selectedId && !rawEntities[selectedId]) {
+        html += `<option value="${escapeHTML(selectedId)}" selected>[預先指定 ID] ${escapeHTML(selectedId)}</option>`;
+      }
+      return html;
+    }
+
+    function addCustomBox() {
+      ensureStudioConfig();
+      fullLayoutConfig.custom_boxes.push({
+        id: 'box_' + Date.now(),
+        title: 'A：自定義重點組合框',
+        subtitle: '跨設備密集監控與控制',
+        metric_cols: 3,
+        control_cols: 2,
+        metrics: [],
+        controls: []
+      });
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function addEggrollerTemplateBox() {
+      ensureStudioConfig();
+      // Auto-match discovered Eggroller entities if present, or fallback to standard MQTT topic keys
+      fullLayoutConfig.top_banners.push({
+        id: 'banner_egg_' + Date.now(),
+        label: '🐣 孵蛋機即時事件廣播',
+        topic: 'Farm/Eggroller/RptMess',
+        json_key: '',
+        latest_size: '28px',
+        history_size: '14px',
+        max_history: 3
+      });
+
+      fullLayoutConfig.custom_boxes.unshift({
+        id: 'box_egg_' + Date.now(),
+        title: '🐣 智慧孵蛋與育雛重點資訊 (Eggroller 樣本)',
+        subtitle: 'Farm/Eggroller + 目標環境排列',
+        metric_cols: 3,
+        control_cols: 2,
+        metrics: [
+          {
+            id: 'm1',
+            label: '箱內溫濕度',
+            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'temp', prefix: '', unit: '°C' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'hum',  prefix: '', unit: '%' }
+          },
+          {
+            id: 'm2',
+            label: '孵化模式/天數',
+            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'mode', prefix: '', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'day',  prefix: 'Day ', unit: '' }
+          },
+          {
+            id: 'm3',
+            label: '階段/翻蛋秒數',
+            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'cycle',    prefix: 'C', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'roll_sec', prefix: '轉', unit: 's' }
+          },
+          {
+            id: 'm4',
+            label: '加熱燈/加濕扇',
+            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'heater', prefix: '燈:', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'fan',    prefix: '扇:', unit: '' }
+          },
+          {
+            id: 'm5',
+            label: '缺水/翻蛋狀態',
+            primary:   { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'water_low', prefix: '缺水:', unit: '' },
+            secondary: { source_type: 'topic', topic: 'Farm/Eggroller/status', json_key: 'roller',    prefix: '馬達:', unit: '' }
+          },
+          {
+            id: 'm6',
+            label: '育雛室(現況/目標)',
+            primary:   { source_type: 'topic', topic: 'Farm/Brooder/status', json_key: 'temp', prefix: '',    unit: '°C' },
+            secondary: { source_type: 'topic', topic: 'Farm/Brooder/target', json_key: 'temp', prefix: '目標 ', unit: '°C' }
+          }
+        ],
+        controls: []
+      });
+      populateStudioUI();
+    }
+
+    function removeCustomBox(bIdx) {
+      fullLayoutConfig.custom_boxes.splice(bIdx, 1);
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function moveCustomBox(bIdx, dir) {
+      const arr = fullLayoutConfig.custom_boxes;
+      const nIdx = bIdx + dir;
+      if (nIdx < 0 || nIdx >= arr.length) return;
+      const tmp = arr[bIdx];
+      arr[bIdx] = arr[nIdx];
+      arr[nIdx] = tmp;
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function addMetricCell(bIdx) {
+      fullLayoutConfig.custom_boxes[bIdx].metrics.push({
+        id: 'cell_' + Date.now(),
+        label: '環境指標',
+        primary: { source_type: 'entity', entity_id: '', topic: '', json_key: '', prefix: '', unit: '' },
+        secondary: null
+      });
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function toggleSecondarySlot(bIdx, mIdx) {
+      const cell = fullLayoutConfig.custom_boxes[bIdx].metrics[mIdx];
+      if (cell.secondary) {
+        cell.secondary = null;
+      } else {
+        cell.secondary = { source_type: 'topic', entity_id: '', topic: 'Farm/Zone/target', json_key: 'temp', prefix: '目標 ', unit: '°C' };
+      }
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function removeMetricCell(bIdx, mIdx) {
+      fullLayoutConfig.custom_boxes[bIdx].metrics.splice(mIdx, 1);
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function addControlItem(bIdx) {
+      fullLayoutConfig.custom_boxes[bIdx].controls.push({
+        entity_id: '',
+        alias: '',
+        action: ''
+      });
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function removeControlItem(bIdx, cIdx) {
+      fullLayoutConfig.custom_boxes[bIdx].controls.splice(cIdx, 1);
+      renderStudioBoxList();
+      renderStudioLivePreview();
+    }
+
+    function renderSlotEditorHTML(bIdx, mIdx, slotKey, slotObj, titleText) {
+      const isTopic = (slotObj.source_type === 'topic');
+      const pathExpr = `fullLayoutConfig.custom_boxes[${bIdx}].metrics[${mIdx}].${slotKey}`;
+      return `
+        <div class="studio-row" style="margin-bottom:4px; background:rgba(0,0,0,0.2); padding:5px; border-radius:4px;">
+          <span style="font-size:0.74rem; color:var(--accent); font-weight:700; min-width:58px;">${titleText}</span>
+          <select class="studio-select" onchange="${pathExpr}.source_type=this.value; renderStudioBoxList(); renderStudioLivePreview();">
+            <option value="entity" ${!isTopic?'selected':''}>設備實體 (B4/C1)</option>
+            <option value="topic" ${isTopic?'selected':''}>手寫 MQTT Topic</option>
+          </select>
+          ${!isTopic ? `
+            <select class="studio-select" style="flex:1; min-width:160px;" onchange="${pathExpr}.entity_id=this.value; renderStudioLivePreview();">
+              ${getEntityOptionsHTML(slotObj.entity_id, false)}
+            </select>
+          ` : `
+            <input class="studio-input" style="flex:1; min-width:135px; font-family:monospace;" placeholder="Topic (如 Farm/Brooder/target)" value="${escapeHTML(slotObj.topic || '')}" onchange="${pathExpr}.topic=this.value; renderStudioLivePreview();">
+            <input class="studio-input" style="width:78px; font-family:monospace;" placeholder="JSON鍵(temp)" value="${escapeHTML(slotObj.json_key || '')}" onchange="${pathExpr}.json_key=this.value; renderStudioLivePreview();">
+          `}
+          <input class="studio-input" style="width:68px;" placeholder="前綴(目標 )" value="${escapeHTML(slotObj.prefix || '')}" onchange="${pathExpr}.prefix=this.value; renderStudioLivePreview();">
+          <input class="studio-input" style="width:52px;" placeholder="單位(°C)" value="${escapeHTML(slotObj.unit || '')}" onchange="${pathExpr}.unit=this.value; renderStudioLivePreview();">
+        </div>
+      `;
+    }
+
+    function renderStudioBoxList() {
+      const container = document.getElementById('st-box-list');
+      const boxes = fullLayoutConfig.custom_boxes;
+      if (boxes.length === 0) {
+        container.innerHTML = '<div style="font-size:0.78rem; color:var(--text-muted);">尚未建立自定義大框。可點上方「🐣 插入孵蛋機範例框」或「➕ 新增自定義大框」把不同設備的項目抽出來密集排列。</div>';
+        return;
+      }
+
+      container.innerHTML = boxes.map((box, bIdx) => `
+        <div class="studio-subcard" style="border-left: 3px solid var(--accent);">
+          <div class="studio-row">
+            <input class="studio-input" style="font-weight:700; width:210px;" placeholder="大框標題 (如 A：孵蛋與環境)" value="${escapeHTML(box.title)}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].title=this.value; renderStudioLivePreview();">
+            <input class="studio-input" style="width:140px;" placeholder="副標題 (選填)" value="${escapeHTML(box.subtitle || '')}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].subtitle=this.value; renderStudioLivePreview();">
+            <label style="font-size:0.75rem;">數據每列:
+              <select class="studio-select" onchange="fullLayoutConfig.custom_boxes[${bIdx}].metric_cols=parseInt(this.value,10); renderStudioLivePreview();">
+                ${[1,2,3,4,5,6].map(n => `<option value="${n}" ${(box.metric_cols||3)===n?'selected':''}>${n} 格</option>`).join('')}
+              </select>
+            </label>
+            <label style="font-size:0.75rem;">按鈕每列:
+              <select class="studio-select" onchange="fullLayoutConfig.custom_boxes[${bIdx}].control_cols=parseInt(this.value,10); renderStudioLivePreview();">
+                ${[1,2,3,4].map(n => `<option value="${n}" ${(box.control_cols||2)===n?'selected':''}>${n} 格</option>`).join('')}
+              </select>
+            </label>
+            <div style="margin-left:auto; display:flex; gap:4px;">
+              <button class="badge-btn" onclick="moveCustomBox(${bIdx}, -1)">▲</button>
+              <button class="badge-btn" onclick="moveCustomBox(${bIdx}, 1)">▼</button>
+              <button class="badge-btn" onclick="removeCustomBox(${bIdx})">✕ 刪框</button>
+            </div>
+          </div>
+
+          <!-- Dense Metrics List inside Box -->
+          <div style="margin-top:8px; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.78rem; font-weight:700;">📊 密集數據格 (支援單一數值 或 主+副雙數值組合)：</span>
+              <button class="badge-btn" style="font-size:0.74rem; padding:2px 8px;" onclick="addMetricCell(${bIdx})">➕ 新增數據格</button>
+            </div>
+            ${(box.metrics || []).map((m, mIdx) => `
+              <div style="border:1px dashed var(--card-border); padding:6px; border-radius:6px; margin-bottom:6px;">
+                <div class="studio-row" style="margin-bottom:4px;">
+                  <span style="font-size:0.75rem; font-weight:700;">格 #${mIdx+1} 名稱:</span>
+                  <input class="studio-input" style="width:140px;" placeholder="如: 育雛室" value="${escapeHTML(m.label)}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].metrics[${mIdx}].label=this.value; renderStudioLivePreview();">
+                  <button class="badge-btn" style="font-size:0.72rem; padding:2px 6px;" onclick="toggleSecondarySlot(${bIdx}, ${mIdx})">
+                    ${m.secondary ? '➖ 拆開 (移除副數值)' : '➕ 組合第2數值 (如: / 目標溫度)'}
+                  </button>
+                  <button class="badge-btn" style="margin-left:auto; font-size:0.72rem; padding:2px 6px;" onclick="removeMetricCell(${bIdx}, ${mIdx})">✕</button>
+                </div>
+                ${renderSlotEditorHTML(bIdx, mIdx, 'primary', m.primary, '主數值')}
+                ${m.secondary ? renderSlotEditorHTML(bIdx, mIdx, 'secondary', m.secondary, '副數值(/)') : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Dense Controls List inside Box -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.78rem; font-weight:700;">🔘 抽選控制按鈕 (從 B/C 設備任挑 B4, B5, C6, C7)：</span>
+              <button class="badge-btn" style="font-size:0.74rem; padding:2px 8px;" onclick="addControlItem(${bIdx})">➕ 挑選控制按鈕</button>
+            </div>
+            ${(box.controls || []).map((c, cIdx) => `
+              <div class="studio-row">
+                <select class="studio-select" style="flex:1; min-width:190px;" onchange="fullLayoutConfig.custom_boxes[${bIdx}].controls[${cIdx}].entity_id=this.value; renderStudioLivePreview();">
+                  ${getEntityOptionsHTML(c.entity_id, true)}
+                </select>
+                <input class="studio-input" style="width:130px;" placeholder="自訂短名稱(選填)" value="${escapeHTML(c.alias || '')}" onchange="fullLayoutConfig.custom_boxes[${bIdx}].controls[${cIdx}].alias=this.value; renderStudioLivePreview();">
+                <button class="badge-btn" onclick="removeControlItem(${bIdx}, ${cIdx})">✕</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- Live E-Ink Simulation Preview (100% Client-Side PC Rendering) ---
+    function previewResolveSlot(slot) {
+      if (!slot) return { text: '--', stale: false };
+      if (slot.source_type === 'topic') {
+        const t = (slot.topic || '').trim();
+        if (!t) return { text: '--', stale: false };
+        const ct = customTopicsMap[t];
+        let raw = '--';
+        let stale = false;
+        if (ct) {
+          if (slot.json_key && ct.last_json && ct.last_json[slot.json_key] !== undefined) {
+            raw = String(ct.last_json[slot.json_key]);
+          } else if (!slot.json_key && ct.last_payload) {
+            raw = ct.last_payload;
+          }
+        } else {
+          // Sample placeholder for preview convenience
+          raw = slot.json_key === 'temp' ? '38.6' : (slot.json_key === 'hum' ? '62' : '樣本值');
+        }
+        return { text: `${slot.prefix || ''}${raw}${slot.unit || ''}`, stale };
+      }
+
+      const ent = rawEntities[slot.entity_id];
+      if (!ent) return { text: `${slot.prefix || ''}離線`, stale: true };
+      const val = (ent.state && ent.state !== 'UNKNOWN') ? ent.state : '--';
+      const u = slot.unit || ent.unit || '';
+      return {
+        text: `${slot.prefix || ''}${val}${u ? ' ' + u : ''}`,
+        stale: val === '--'
+      };
+    }
+
+    function renderStudioLivePreview() {
+      ensureStudioConfig();
+      const canvas = document.getElementById('st-live-preview');
+      if (!canvas) return;
+
+      const g = fullLayoutConfig.global;
+      let html = `
+        <div style="border-bottom:3px solid #000; padding-bottom:4px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+          <b>📟 Mushi E-Ink (${g.pure_no_css ? '無CSS純Table' : '高對比模式'})</b>
+          <span>[↺ 刷新] [🧹 刷屏] [⏱ ${g.default_refresh_sec}s]</span>
+        </div>
+      `;
+
+      // 1. Top Banners Preview
+      fullLayoutConfig.top_banners.forEach(b => {
+        const ct = customTopicsMap[(b.topic || '').trim()];
+        const hist = (ct && ct.history && ct.history.length > 0) ? ct.history : [
+          { payload: '開飯囉！請至餐廳集合 / Egg rolling finished (14s)', timestamp: '14:20:05' },
+          { payload: '前次廣播：育雛室目標溫度已調至 33.0°C', timestamp: '12:15:00' },
+          { payload: '系統公告：早安，今日雞舍巡檢正常', timestamp: '08:00:12' }
+        ];
+        const maxH = b.max_history || 3;
+        html += `<div style="border:3px solid #000; padding:6px 8px; margin-bottom:8px;">`;
+        html += `<div style="font-size:11px; font-weight:bold; border-bottom:1px solid #000; margin-bottom:4px;">📢 ${escapeHTML(b.label)} (${escapeHTML(b.topic)})</div>`;
+        hist.slice(0, maxH).forEach((m, idx) => {
+          const ts = typeof m.timestamp === 'string' && m.timestamp.length > 8 ? m.timestamp.substring(11, 19) : m.timestamp;
+          if (idx === 0) {
+            html += `<div style="font-size:${escapeHTML(b.latest_size || '28px')}; font-weight:900; line-height:1.15; margin:4px 0;">${escapeHTML(m.payload)} <span style="font-size:11px; font-weight:normal;">[${escapeHTML(ts)}]</span></div>`;
+          } else {
+            html += `<div style="font-size:${escapeHTML(b.history_size || '14px')}; border-top:1px dashed #000; padding-top:2px; margin-top:2px;">[${escapeHTML(ts)}] ${escapeHTML(m.payload)}</div>`;
+          }
+        });
+        html += `</div>`;
+      });
+
+      // 2. Custom Composite Boxes Preview
+      fullLayoutConfig.custom_boxes.forEach(box => {
+        html += `<div style="border:2px solid #000; padding:6px; margin-bottom:8px;">`;
+        html += `<div style="border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:5px;"><b>${escapeHTML(box.title)}</b> <small>${escapeHTML(box.subtitle || '')}</small></div>`;
+
+        if (box.metrics && box.metrics.length > 0) {
+          const cols = box.metric_cols || 3;
+          const pct = Math.floor(100 / cols);
+          html += `<table style="width:100%; border-collapse:collapse; margin-bottom:5px;"><tr>`;
+          box.metrics.forEach((cell, i) => {
+            if (i > 0 && i % cols === 0) html += `</tr><tr>`;
+            const p = previewResolveSlot(cell.primary);
+            let valHTML = p.stale ? `<del>${escapeHTML(p.text)}</del>` : escapeHTML(p.text);
+            let isStale = p.stale;
+            if (cell.secondary) {
+              const s = previewResolveSlot(cell.secondary);
+              valHTML += ` / ` + (s.stale ? `<del>${escapeHTML(s.text)}</del>` : escapeHTML(s.text));
+              if (s.stale) isStale = true;
+            }
+            const staleStyle = isStale ? 'border:2px dashed #000; background:repeating-linear-gradient(135deg,#fff,#fff 6px,#ddd 6px,#ddd 8px);' : 'border:1px solid #000;';
+            html += `<td style="width:${pct}%; ${staleStyle} padding:4px; text-align:center;">
+              <div style="font-size:11px; font-weight:bold;">${escapeHTML(cell.label)}${isStale ? ' [逾時]' : ''}</div>
+              <div style="font-size:14px; font-weight:bold; font-family:monospace;">${valHTML}</div>
+            </td>`;
+          });
+          html += `</tr></table>`;
+        }
+
+        if (box.controls && box.controls.length > 0) {
+          const cols = box.control_cols || 2;
+          const pct = Math.floor(100 / cols);
+          html += `<table style="width:100%; border-collapse:separate; border-spacing:3px;"><tr>`;
+          box.controls.forEach((ctrl, i) => {
+            if (i > 0 && i % cols === 0) html += `</tr><tr>`;
+            const ent = rawEntities[ctrl.entity_id];
+            const lbl = ctrl.alias || (ent ? cleanEntityName(ent.name, ent.device_name, ent.device_area) : (ctrl.entity_id || '未選按鈕'));
+            const isOn = ent && (ent.state === 'ON' || ent.state === ent.payload_on);
+            const btnStyle = isOn ? 'background:#000; color:#fff; border:2px solid #000;' : 'background:#fff; color:#000; border:2px solid #000;';
+            html += `<td style="width:${pct}%; ${btnStyle} padding:6px; text-align:center; font-weight:bold; font-size:13px;">
+              ${escapeHTML(lbl)}<div style="font-size:10px; font-weight:normal;">${isOn ? 'ON ●' : 'OFF ○'}</div>
+            </td>`;
+          });
+          html += `</tr></table>`;
+        }
+
+        html += `</div>`;
+      });
+
+      html += `<div style="font-size:11px; border-top:1px dashed #000; padding-top:4px; text-align:center;">
+        (單頁未分組物件上限: ${g.max_unassigned_items} 件 | 斷線逾時斜線+<del>刪除線</del>: ${g.stale_timeout_minutes} 分鐘)
+      </div>`;
+
+      canvas.innerHTML = html;
+    }
+
+    async function saveEinkStudioConfig() {
+      syncStudioFromUI();
+      fullLayoutConfig.order = [...customOrder];
+      try {
+        const res = await fetch('/api/layout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fullLayoutConfig)
+        });
+        if (res.ok) {
+          alert('✅ E-Ink 版面配置已儲存至伺服器！\n現在老舊 Kindle 打開或刷新 /lite 即可直接看到新排版。');
+        } else {
+          alert('儲存失敗，請檢查登入狀態');
+        }
+      } catch (err) {
+        alert('網路連線失敗');
+      }
+    }
+
+    function exportEinkJSON() {
+      syncStudioFromUI();
+      const jsonStr = JSON.stringify(fullLayoutConfig, null, 2);
+      const edited = prompt('您可以複製下方設定 JSON 備份，或直接修改貼上後按確定套用：', jsonStr);
+      if (edited && edited.trim() !== '') {
+        try {
+          const parsed = JSON.parse(edited);
+          fullLayoutConfig = parsed;
+          populateStudioUI();
+        } catch (e) {
+          alert('JSON 語法錯誤: ' + e.message);
+        }
+      }
     }
 
     // Startup
